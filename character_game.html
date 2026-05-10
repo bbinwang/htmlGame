@@ -608,7 +608,13 @@ function handleFindClick(cell, item) {
         document.querySelectorAll('.char-cell').forEach(c => {
             if (c !== cell && c.textContent === currentTarget.char) c.classList.add('found');
         });
-        setTimeout(() => { round++; nextRound(); }, 800);
+        // 答对后显示组词提示
+        const hintEl = document.createElement('div');
+        hintEl.className = 'hint';
+        hintEl.style.cssText = 'color:#43e97b;font-size:1.1em;margin-top:6px;animation:popCorrect 0.5s ease';
+        hintEl.textContent = `✅ ${currentTarget.char} → ${currentTarget.hint}`;
+        document.getElementById('promptArea').appendChild(hintEl);
+        setTimeout(() => { round++; nextRound(); }, 1500);
     } else {
         cell.classList.add('wrong');
         sfxWrong();
@@ -734,13 +740,12 @@ function handleQuizClick(cell, item) {
         score += 10 + combo * 2;
         showCombo();
         spawnStars(cell.getBoundingClientRect().left, cell.getBoundingClientRect().top);
-        setTimeout(() => { round++; nextRound(); }, 800);
-    } else {
-        cell.classList.add('wrong');
-        sfxWrong();
-        combo = 0;
-        lives--;
-        updateHUD();
+        // 答对后显示组词提示
+        const hintEl = document.createElement('div');
+        hintEl.style.cssText = 'color:#43e97b;font-size:1.1em;margin-top:6px;animation:popCorrect 0.5s ease';
+        hintEl.textContent = `✅ ${currentTarget.char} → ${currentTarget.hint}`;
+        document.getElementById('promptArea').appendChild(hintEl);
+        setTimeout(() => { round++; nextRound(); }, 1500);
         setTimeout(() => cell.classList.remove('wrong'), 400);
     }
 }
