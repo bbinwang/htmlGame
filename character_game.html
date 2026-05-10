@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>识字大冒险</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* ===== 背景飘浮装饰 ===== */
+        .float-char {
+            position: fixed;
+            font-size: 2em;
+            opacity: 0.08;
+            color: #fff;
+            animation: floatUp 12s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.08; }
+            90% { opacity: 0.08; }
+            100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* ===== 主容器 ===== */
+        .game-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 24px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== 开始页面 ===== */
+        .start-screen {
+            text-align: center;
+        }
+        .start-screen h1 {
+            font-size: 2.2em;
+            color: #764ba2;
+            margin-bottom: 10px;
+        }
+        .start-screen p {
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+        .start-screen .emoji-title {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .mode-btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.15em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            color: #fff;
+        }
+        .mode-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
+        .mode-btn:active { transform: scale(0.97); }
+        .mode-btn.find { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .mode-btn.match { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .mode-btn.quiz { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+
+        /* ===== 顶部状态栏 ===== */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .score-box {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .progress-box {
+            font-size: 0.95em;
+            color: #888;
+        }
+        .hearts {
+            font-size: 1.4em;
+            letter-spacing: 2px;
+        }
+
+        /* ===== 进度条 ===== */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #43e97b, #38f9d7);
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+
+        /* ===== 提示区 ===== */
+        .prompt-area {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .prompt-area .pinyin {
+            font-size: 1.6em;
+            color: #764ba2;
+            font-weight: bold;
+        }
+        .prompt-area .hint {
+            font-size: 1em;
+            color: #999;
+            margin-top: 4px;
+        }
+        .prompt-area .question-text {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        /* ===== 字格区域 ===== */
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .char-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            user-select: none;
+            background: #f8f8ff;
+            border: 3px solid transparent;
+            color: #333;
+        }
+        .char-cell:hover { transform: scale(1.08); box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        .char-cell.correct {
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            color: #fff;
+            border-color: #2ecc71;
+            animation: popCorrect 0.5s ease;
+        }
+        .char-cell.wrong {
+            background: #ff6b6b;
+            color: #fff;
+            border-color: #e74c3c;
+            animation: shakeWrong 0.4s ease;
+        }
+        .char-cell.found {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        @keyframes popCorrect {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shakeWrong {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        /* ===== 配对模式 ===== */
+        .match-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .match-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4em;
+            font-weight: bold;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            user-select: none;
+            background: #f0f0ff;
+            border: 3px solid transparent;
+        }
+        .match-cell:hover { transform: scale(1.06); }
+        .match-cell.selected {
+            border-color: #764ba2;
+            background: #e8e0f0;
+            transform: scale(1.06);
+        }
+        .match-cell.matched {
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            color: #fff;
+            pointer-events: none;
+            animation: popCorrect 0.5s ease;
+        }
+        .match-cell.wrong-match {
+            animation: shakeWrong 0.4s ease;
+            background: #ff6b6b;
+            color: #fff;
+        }
+        .match-cell.is-char {
+            font-size: 2em;
+            background: #fff8f0;
+        }
+        .match-cell.is-pinyin {
+            color: #764ba2;
+            font-size: 1.15em;
+            background: #f0f8ff;
+        }
+
+        /* ===== 选择题模式 ===== */
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .quiz-option {
+            padding: 20px;
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            border-radius: 14px;
+            cursor: pointer;
+            background: #f8f8ff;
+            border: 3px solid transparent;
+            transition: transform 0.15s;
+            user-select: none;
+        }
+        .quiz-option:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .quiz-option.correct {
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            color: #fff;
+            animation: popCorrect 0.5s ease;
+        }
+        .quiz-option.wrong {
+            background: #ff6b6b;
+            color: #fff;
+            animation: shakeWrong 0.4s ease;
+        }
+
+        /* ===== 结果页 ===== */
+        .result-screen {
+            text-align: center;
+        }
+        .result-screen .big-emoji { font-size: 4em; margin-bottom: 10px; }
+        .result-screen h2 { color: #764ba2; font-size: 1.8em; margin-bottom: 8px; }
+        .result-screen .stats { color: #666; font-size: 1.1em; margin-bottom: 20px; line-height: 1.8; }
+        .result-screen .stars { font-size: 2.5em; margin-bottom: 16px; }
+        .btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            color: #fff;
+            margin: 6px;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn.primary { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .btn.secondary { background: linear-gradient(135deg, #a8a8a8, #888); }
+        .btn.back { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+
+        /* ===== 连击动画 ===== */
+        .combo-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 3em;
+            font-weight: bold;
+            color: #f5576c;
+            pointer-events: none;
+            z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .combo-popup.show {
+            animation: comboPop 0.8s ease forwards;
+        }
+        @keyframes comboPop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+
+        /* ===== 星星飘落 ===== */
+        .star-particle {
+            position: fixed;
+            font-size: 1.5em;
+            pointer-events: none;
+            z-index: 100;
+            animation: starFall 1s ease forwards;
+        }
+        @keyframes starFall {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(60px) scale(0.3) rotate(180deg); }
+        }
+
+        /* ===== 隐藏 ===== */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<!-- 飘浮背景装饰 -->
+<div id="bgChars"></div>
+
+<!-- 连击提示 -->
+<div id="comboPopup" class="combo-popup"></div>
+
+<div class="game-container">
+    <!-- ===== 开始页面 ===== -->
+    <div id="startScreen" class="start-screen">
+        <div class="emoji-title">🎓</div>
+        <h1>识字大冒险</h1>
+        <p>一年级必认汉字 · 100字趣味闯关</p>
+        <p style="color:#aaa;font-size:0.9em;">选择一个游戏模式开始吧！</p>
+        <br>
+        <button class="mode-btn find" onclick="startGame('find')">🔍 找一找 — 看拼音找汉字</button>
+        <button class="mode-btn match" onclick="startGame('match')">🔗 配一配 — 汉字拼音配对</button>
+        <button class="mode-btn quiz" onclick="startGame('quiz')">🎯 选一选 — 四选一认字</button>
+    </div>
+
+    <!-- ===== 游戏页面 ===== -->
+    <div id="gameScreen" class="hidden">
+        <div class="top-bar">
+            <div class="score-box" id="scoreBox">⭐ 0</div>
+            <div class="progress-box" id="progressBox">1 / 10</div>
+            <div class="hearts" id="hearts">❤️❤️❤️</div>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <div class="prompt-area" id="promptArea"></div>
+        <div id="playArea"></div>
+    </div>
+
+    <!-- ===== 结果页面 ===== -->
+    <div id="resultScreen" class="result-screen hidden">
+        <div class="big-emoji" id="resultEmoji">🎉</div>
+        <h2 id="resultTitle">太棒了！</h2>
+        <div class="stars" id="resultStars"></div>
+        <div class="stats" id="resultStats"></div>
+        <button class="btn primary" onclick="restartSameMode()">再来一次</button>
+        <button class="btn back" onclick="backToMenu()">返回菜单</button>
+    </div>
+</div>
+
+<script>
+// ===== 100个一年级常用汉字 =====
+const ALL_CHARS = [
+    {char:'人',pinyin:'rén',hint:'人民'},{char:'口',pinyin:'kǒu',hint:'口水'},
+    {char:'手',pinyin:'shǒu',hint:'小手'},{char:'日',pinyin:'rì',hint:'日出'},
+    {char:'月',pinyin:'yuè',hint:'月亮'},{char:'水',pinyin:'shuǐ',hint:'喝水'},
+    {char:'火',pinyin:'huǒ',hint:'火车'},{char:'山',pinyin:'shān',hint:'大山'},
+    {char:'石',pinyin:'shí',hint:'石头'},{char:'田',pinyin:'tián',hint:'田地'},
+    {char:'土',pinyin:'tǔ',hint:'泥土'},{char:'木',pinyin:'mù',hint:'树木'},
+    {char:'禾',pinyin:'hé',hint:'禾苗'},{char:'米',pinyin:'mǐ',hint:'大米'},
+    {char:'竹',pinyin:'zhú',hint:'竹子'},{char:'马',pinyin:'mǎ',hint:'小马'},
+    {char:'牛',pinyin:'niú',hint:'水牛'},{char:'羊',pinyin:'yáng',hint:'小羊'},
+    {char:'鸟',pinyin:'niǎo',hint:'小鸟'},{char:'鱼',pinyin:'yú',hint:'小鱼'},
+    {char:'虫',pinyin:'chóng',hint:'小虫'},{char:'草',pinyin:'cǎo',hint:'小草'},
+    {char:'花',pinyin:'huā',hint:'花朵'},{char:'果',pinyin:'guǒ',hint:'水果'},
+    {char:'风',pinyin:'fēng',hint:'大风'},{char:'雨',pinyin:'yǔ',hint:'下雨'},
+    {char:'云',pinyin:'yún',hint:'白云'},{char:'雪',pinyin:'xuě',hint:'下雪'},
+    {char:'天',pinyin:'tiān',hint:'天空'},{char:'地',pinyin:'dì',hint:'大地'},
+    {char:'上',pinyin:'shàng',hint:'上面'},{char:'下',pinyin:'xià',hint:'下面'},
+    {char:'左',pinyin:'zuǒ',hint:'左手'},{char:'右',pinyin:'yòu',hint:'右手'},
+    {char:'大',pinyin:'dà',hint:'大小'},{char:'小',pinyin:'xiǎo',hint:'小明'},
+    {char:'多',pinyin:'duō',hint:'多少'},{char:'少',pinyin:'shǎo',hint:'少量'},
+    {char:'高',pinyin:'gāo',hint:'高大'},{char:'长',pinyin:'cháng',hint:'长短'},
+    {char:'前',pinyin:'qián',hint:'前面'},{char:'后',pinyin:'hòu',hint:'后面'},
+    {char:'东',pinyin:'dōng',hint:'东方'},{char:'西',pinyin:'xī',hint:'西方'},
+    {char:'南',pinyin:'nán',hint:'南方'},{char:'北',pinyin:'běi',hint:'北方'},
+    {char:'春',pinyin:'chūn',hint:'春天'},{char:'夏',pinyin:'xià',hint:'夏天'},
+    {char:'秋',pinyin:'qiū',hint:'秋天'},{char:'冬',pinyin:'dōng',hint:'冬天'},
+    {char:'一',pinyin:'yī',hint:'一个'},{char:'二',pinyin:'èr',hint:'二月'},
+    {char:'三',pinyin:'sān',hint:'三个'},{char:'四',pinyin:'sì',hint:'四季'},
+    {char:'五',pinyin:'wǔ',hint:'五月'},{char:'六',pinyin:'liù',hint:'六一'},
+    {char:'七',pinyin:'qī',hint:'七天'},{char:'八',pinyin:'bā',hint:'八方'},
+    {char:'九',pinyin:'jiǔ',hint:'九月'},{char:'十',pinyin:'shí',hint:'十个'},
+    {char:'百',pinyin:'bǎi',hint:'一百'},{char:'千',pinyin:'qiān',hint:'一千'},
+    {char:'万',pinyin:'wàn',hint:'一万'},{char:'我',pinyin:'wǒ',hint:'我们'},
+    {char:'你',pinyin:'nǐ',hint:'你好'},{char:'他',pinyin:'tā',hint:'他们'},
+    {char:'她',pinyin:'tā',hint:'她的'},{char:'它',pinyin:'tā',hint:'它的'},
+    {char:'们',pinyin:'men',hint:'我们'},{char:'好',pinyin:'hǎo',hint:'你好'},
+    {char:'爱',pinyin:'ài',hint:'爱心'},{char:'学',pinyin:'xué',hint:'学习'},
+    {char:'生',pinyin:'shēng',hint:'生日'},{char:'老',pinyin:'lǎo',hint:'老师'},
+    {char:'师',pinyin:'shī',hint:'老师'},{char:'朋',pinyin:'péng',hint:'朋友'},
+    {char:'友',pinyin:'yǒu',hint:'朋友'},{char:'中',pinyin:'zhōng',hint:'中国'},
+    {char:'国',pinyin:'guó',hint:'中国'},{char:'家',pinyin:'jiā',hint:'家人'},
+    {char:'爸',pinyin:'bà',hint:'爸爸'},{char:'妈',pinyin:'mā',hint:'妈妈'},
+    {char:'哥',pinyin:'gē',hint:'哥哥'},{char:'姐',pinyin:'jiě',hint:'姐姐'},
+    {char:'弟',pinyin:'dì',hint:'弟弟'},{char:'妹',pinyin:'mèi',hint:'妹妹'},
+    {char:'子',pinyin:'zǐ',hint:'孩子'},{char:'男',pinyin:'nán',hint:'男孩'},
+    {char:'红',pinyin:'hóng',hint:'红色'},{char:'黄',pinyin:'huáng',hint:'黄色'},
+    {char:'蓝',pinyin:'lán',hint:'蓝色'},{char:'绿',pinyin:'lǜ',hint:'绿色'},
+    {char:'白',pinyin:'bái',hint:'白色'},{char:'黑',pinyin:'hēi',hint:'黑色'},
+    {char:'门',pinyin:'mén',hint:'大门'},{char:'车',pinyin:'chē',hint:'汽车'},
+    {char:'见',pinyin:'jiàn',hint:'看见'},{char:'看',pinyin:'kàn',hint:'看书'},
+    {char:'听',pinyin:'tīng',hint:'听话'},{char:'说',pinyin:'shuō',hint:'说话'},
+    {char:'读',pinyin:'dú',hint:'读书'},{char:'写',pinyin:'xiě',hint:'写字'},
+];
+
+// ===== 工具函数 =====
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function pickRandom(arr, n) {
+    return shuffle(arr).slice(0, n);
+}
+
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ===== 音效（Web Audio API）=====
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+function playTone(freq, dur, type='sine') {
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+}
+
+function sfxCorrect() {
+    playTone(523, 0.1); setTimeout(() => playTone(659, 0.1), 100); setTimeout(() => playTone(784, 0.2), 200);
+}
+function sfxWrong() { playTone(200, 0.3, 'sawtooth'); }
+function sfxCombo() {
+    playTone(784, 0.08); setTimeout(() => playTone(988, 0.08), 80);
+    setTimeout(() => playTone(1175, 0.15), 160);
+}
+
+// ===== 飘浮背景 =====
+function initBgChars() {
+    const container = document.getElementById('bgChars');
+    const chars = '一二三四五六七八九十人口手日月水火山石田木花草鱼鸟风雨云雪春夏秋冬';
+    for (let i = 0; i < 15; i++) {
+        const el = document.createElement('div');
+        el.className = 'float-char';
+        el.textContent = chars[Math.floor(Math.random() * chars.length)];
+        el.style.left = Math.random() * 100 + '%';
+        el.style.animationDelay = Math.random() * 12 + 's';
+        el.style.fontSize = (1.2 + Math.random() * 1.5) + 'em';
+        container.appendChild(el);
+    }
+}
+initBgChars();
+
+// ===== 星星粒子 =====
+function spawnStars(x, y, count = 6) {
+    for (let i = 0; i < count; i++) {
+        const s = document.createElement('div');
+        s.className = 'star-particle';
+        s.textContent = ['⭐','✨','🌟','💫'][Math.floor(Math.random()*4)];
+        s.style.left = (x + (Math.random()-0.5)*80) + 'px';
+        s.style.top = (y + (Math.random()-0.5)*40) + 'px';
+        document.body.appendChild(s);
+        setTimeout(() => s.remove(), 1000);
+    }
+}
+
+// ===== 连击提示 =====
+let combo = 0;
+function showCombo() {
+    if (combo < 3) return;
+    const el = document.getElementById('comboPopup');
+    const texts = ['', '', '', '🔥 连击×3', '⚡ 连击×4', '💥 连击×5', '🌈 超级连击×6', '🚀 超级连击×7'];
+    el.textContent = texts[Math.min(combo, 7)] || `🏆 无敌连击×${combo}`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    sfxCombo();
+}
+
+// ===== 游戏状态 =====
+let gameMode = 'find';
+let round = 0;
+const TOTAL_ROUNDS = 10;
+let score = 0;
+let lives = 3;
+let roundChars = [];
+let currentTarget = null;
+let answered = false;
+let matchState = { selected: null, pairs: [], matched: 0, total: 6 };
+
+// ===== 开始游戏 =====
+function startGame(mode) {
+    gameMode = mode;
+    round = 0;
+    score = 0;
+    lives = 3;
+    combo = 0;
+    hide('startScreen');
+    hide('resultScreen');
+    show('gameScreen');
+    // 每局随机抽10个字
+    roundChars = pickRandom(ALL_CHARS, TOTAL_ROUNDS);
+    nextRound();
+}
+
+function nextRound() {
+    answered = false;
+    updateHUD();
+    if (round >= TOTAL_ROUNDS) { endGame(); return; }
+    currentTarget = roundChars[round];
+    const promptArea = document.getElementById('promptArea');
+    const playArea = document.getElementById('playArea');
+
+    if (gameMode === 'find') renderFindMode(promptArea, playArea);
+    else if (gameMode === 'match') renderMatchMode(promptArea, playArea);
+    else if (gameMode === 'quiz') renderQuizMode(promptArea, playArea);
+}
+
+function updateHUD() {
+    document.getElementById('scoreBox').textContent = `⭐ ${score}`;
+    document.getElementById('progressBox').textContent = `${Math.min(round+1, TOTAL_ROUNDS)} / ${TOTAL_ROUNDS}`;
+    document.getElementById('progressFill').style.width = (round / TOTAL_ROUNDS * 100) + '%';
+    let h = '';
+    for (let i = 0; i < 3; i++) h += i < lives ? '❤️' : '🤍';
+    document.getElementById('hearts').innerHTML = h;
+}
+
+// ===== 模式1：找一找 =====
+function renderFindMode(promptArea, playArea) {
+    // 从100字中取8个干扰 + 当前目标 = 9宫格
+    const distractors = pickRandom(ALL_CHARS.filter(c => c.char !== currentTarget.char), 8);
+    const grid = shuffle([currentTarget, ...distractors]);
+
+    promptArea.innerHTML = `
+        <div class="question-text">找到这个拼音对应的汉字 👇</div>
+        <div class="pinyin">${currentTarget.pinyin}</div>
+        <div class="hint">提示：${currentTarget.hint}</div>
+    `;
+    playArea.innerHTML = '<div class="char-grid" id="charGrid"></div>';
+    const gridEl = document.getElementById('charGrid');
+    grid.forEach(item => {
+        const cell = document.createElement('div');
+        cell.className = 'char-cell';
+        cell.textContent = item.char;
+        cell.onclick = (e) => handleFindClick(cell, item);
+        gridEl.appendChild(cell);
+    });
+}
+
+function handleFindClick(cell, item) {
+    if (answered) return;
+    if (item.char === currentTarget.char) {
+        answered = true;
+        cell.classList.add('correct');
+        sfxCorrect();
+        combo++;
+        score += 10 + combo * 2;
+        showCombo();
+        spawnStars(cell.getBoundingClientRect().left, cell.getBoundingClientRect().top);
+        // 标记其他正确字符
+        document.querySelectorAll('.char-cell').forEach(c => {
+            if (c !== cell && c.textContent === currentTarget.char) c.classList.add('found');
+        });
+        setTimeout(() => { round++; nextRound(); }, 800);
+    } else {
+        cell.classList.add('wrong');
+        sfxWrong();
+        combo = 0;
+        lives--;
+        updateHUD();
+        setTimeout(() => cell.classList.remove('wrong'), 400);
+        if (lives <= 0) setTimeout(() => endGame(), 600);
+    }
+}
+
+// ===== 模式2：配一配 =====
+function renderMatchMode(promptArea, playArea) {
+    // 6个字的汉字+拼音打乱排列
+    const pool = pickRandom(ALL_CHARS, 6);
+    matchState = { selected: null, pool, pairs: [], matched: 0, total: 6, lock: false };
+    // 构建卡片：6个字卡 + 6个拼音卡
+    const cards = [];
+    pool.forEach(c => {
+        cards.push({type:'char', text: c.char, id: c.char});
+        cards.push({type:'pinyin', text: c.pinyin, id: c.char});
+    });
+    matchState.cards = shuffle(cards);
+
+    promptArea.innerHTML = `
+        <div class="question-text">把汉字和对应的拼音配对吧！</div>
+    `;
+    playArea.innerHTML = '<div class="match-grid" id="matchGrid"></div>';
+    const gridEl = document.getElementById('matchGrid');
+    matchState.cards.forEach((card, idx) => {
+        const cell = document.createElement('div');
+        cell.className = `match-cell ${card.type === 'char' ? 'is-char' : 'is-pinyin'}`;
+        cell.textContent = card.text;
+        cell.dataset.idx = idx;
+        cell.dataset.id = card.id;
+        cell.dataset.type = card.type;
+        cell.onclick = () => handleMatchClick(cell);
+        gridEl.appendChild(cell);
+    });
+}
+
+function handleMatchClick(cell) {
+    if (matchState.lock || cell.classList.contains('matched')) return;
+    if (cell === matchState.selected) {
+        cell.classList.remove('selected');
+        matchState.selected = null;
+        return;
+    }
+    if (!matchState.selected) {
+        cell.classList.add('selected');
+        matchState.selected = cell;
+        return;
+    }
+    // 两个都选中了
+    const first = matchState.selected;
+    const second = cell;
+    // 必须一个是字一个是拼音
+    if (first.dataset.type === second.dataset.type) {
+        first.classList.remove('selected');
+        first.classList.add('wrong-match');
+        second.classList.add('wrong-match');
+        sfxWrong();
+        combo = 0;
+        setTimeout(() => { first.classList.remove('wrong-match'); second.classList.remove('wrong-match'); }, 400);
+        matchState.selected = null;
+        return;
+    }
+    if (first.dataset.id === second.dataset.id) {
+        // 配对成功
+        first.classList.remove('selected');
+        first.classList.add('matched');
+        second.classList.add('matched');
+        sfxCorrect();
+        combo++;
+        score += 10 + combo * 2;
+        matchState.matched++;
+        showCombo();
+        spawnStars(second.getBoundingClientRect().left, second.getBoundingClientRect().top);
+        matchState.selected = null;
+        updateHUD();
+        if (matchState.matched === matchState.total) {
+            setTimeout(() => { round++; nextRound(); }, 800);
+        }
+    } else {
+        first.classList.remove('selected');
+        first.classList.add('wrong-match');
+        second.classList.add('wrong-match');
+        sfxWrong();
+        combo = 0;
+        lives--;
+        updateHUD();
+        setTimeout(() => { first.classList.remove('wrong-match'); second.classList.remove('wrong-match'); }, 400);
+        matchState.selected = null;
+        if (lives <= 0) setTimeout(() => endGame(), 600);
+    }
+}
+
+// ===== 模式3：选一选 =====
+function renderQuizMode(promptArea, playArea) {
+    const distractors = pickRandom(ALL_CHARS.filter(c => c.char !== currentTarget.char), 3);
+    const options = shuffle([currentTarget, ...distractors]);
+
+    promptArea.innerHTML = `
+        <div class="question-text">选出正确的汉字 👇</div>
+        <div class="pinyin">${currentTarget.pinyin}</div>
+        <div class="hint">提示：${currentTarget.hint}</div>
+    `;
+    playArea.innerHTML = '<div class="quiz-options" id="quizOptions"></div>';
+    const gridEl = document.getElementById('quizOptions');
+    options.forEach(item => {
+        const cell = document.createElement('div');
+        cell.className = 'quiz-option';
+        cell.textContent = item.char;
+        cell.onclick = (e) => handleQuizClick(cell, item);
+        gridEl.appendChild(cell);
+    });
+}
+
+function handleQuizClick(cell, item) {
+    if (answered) return;
+    if (item.char === currentTarget.char) {
+        answered = true;
+        cell.classList.add('correct');
+        sfxCorrect();
+        combo++;
+        score += 10 + combo * 2;
+        showCombo();
+        spawnStars(cell.getBoundingClientRect().left, cell.getBoundingClientRect().top);
+        setTimeout(() => { round++; nextRound(); }, 800);
+    } else {
+        cell.classList.add('wrong');
+        sfxWrong();
+        combo = 0;
+        lives--;
+        updateHUD();
+        setTimeout(() => cell.classList.remove('wrong'), 400);
+        if (lives <= 0) setTimeout(() => endGame(), 600);
+    }
+}
+
+// ===== 结束游戏 =====
+function endGame() {
+    hide('gameScreen');
+    show('resultScreen');
+    const maxScore = TOTAL_ROUNDS * 30; // approximate max
+    const pct = score / maxScore;
+    let emoji, title, stars;
+    if (lives <= 0) {
+        emoji = '😢'; title = '别灰心，再来一次！'; stars = '⭐⭐⭐';
+    } else if (pct >= 0.9) {
+        emoji = '🏆'; title = '识字小状元！'; stars = '⭐⭐⭐⭐⭐';
+    } else if (pct >= 0.7) {
+        emoji = '🎉'; title = '太棒了！'; stars = '⭐⭐⭐⭐';
+    } else if (pct >= 0.5) {
+        emoji = '😊'; title = '继续加油！'; stars = '⭐⭐⭐';
+    } else {
+        emoji = '💪'; title = '再练练就好了！'; stars = '⭐⭐';
+    }
+    document.getElementById('resultEmoji').textContent = emoji;
+    document.getElementById('resultTitle').textContent = title;
+    document.getElementById('resultStars').textContent = stars;
+    document.getElementById('resultStats').innerHTML = `
+        得分：<b>${score}</b> 分<br>
+        答对：<b>${Math.max(0, round - (3 - lives))}</b> / ${TOTAL_ROUNDS} 题
+    `;
+}
+
+function restartSameMode() {
+    hide('resultScreen');
+    startGame(gameMode);
+}
+
+function backToMenu() {
+    hide('resultScreen');
+    hide('gameScreen');
+    show('startScreen');
+}
+</script>
+
+</body>
+</html>
