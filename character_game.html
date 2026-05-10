@@ -582,7 +582,6 @@ function renderFindMode(promptArea, playArea) {
     promptArea.innerHTML = `
         <div class="question-text">找到这个拼音对应的汉字 👇</div>
         <div class="pinyin">${currentTarget.pinyin}</div>
-        <div class="hint">提示：${currentTarget.hint}</div>
     `;
     playArea.innerHTML = '<div class="char-grid" id="charGrid"></div>';
     const gridEl = document.getElementById('charGrid');
@@ -713,7 +712,6 @@ function renderQuizMode(promptArea, playArea) {
     promptArea.innerHTML = `
         <div class="question-text">选出正确的汉字 👇</div>
         <div class="pinyin">${currentTarget.pinyin}</div>
-        <div class="hint">提示：${currentTarget.hint}</div>
     `;
     playArea.innerHTML = '<div class="quiz-options" id="quizOptions"></div>';
     const gridEl = document.getElementById('quizOptions');
