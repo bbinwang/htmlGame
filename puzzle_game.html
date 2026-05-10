@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas 拼图游戏</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h1 { color: white; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .controls {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 14px; color: #555; font-weight: 600; }
+        input[type="file"] {
+            padding: 8px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        input[type="file"]:hover { background: #f0f0ff; border-color: #764ba2; }
+        select {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            outline: none;
+        }
+        button {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .game-container { display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+        .canvas-wrapper {
+            position: relative;
+            background: white;
+            border-radius: 15px;
+            padding: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        canvas { display: block; border-radius: 8px; cursor: grab; background: #f5f5f5; }
+        canvas:active { cursor: grabbing; }
+        .info-panel {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            min-width: 200px;
+        }
+        .info-panel h3 { color: #667eea; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .stat { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+        .stat span:first-child { color: #666; }
+        .stat span:last-child { font-weight: 700; color: #333; }
+        .progress-bar { width: 100%; height: 20px; background: #eee; border-radius: 10px; overflow: hidden; margin-top: 15px; }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .victory-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.5s;
+        }
+        .victory-overlay.show { display: flex; }
+        .victory-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            animation: scaleIn 0.5s;
+        }
+        .victory-content h2 { color: #667eea; font-size: 36px; margin-bottom: 20px; }
+        .victory-content p { color: #666; font-size: 18px; margin-bottom: 30px; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .preview-img { max-width: 150px; max-height: 150px; border-radius: 8px; margin-top: 10px; border: 2px solid #eee; }
+        .hint-text { color: #999; font-size: 12px; margin-top: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>🧩 Canvas 拼图游戏</h1>
+    <div class="controls">
+        <div class="control-group">
+            <label>选择图片</label>
+            <input type="file" id="imageInput" accept="image/*">
+        </div>
+        <div class="control-group">
+            <label>难度等级</label>
+            <select id="difficulty">
+                <option value="3">简单 (3x3)</option>
+                <option value="4" selected>中等 (4x4)</option>
+                <option value="5">困难 (5x5)</option>
+                <option value="6">专家 (6x6)</option>
+            </select>
+        </div>
+        <button id="startBtn" disabled>开始游戏</button>
+        <button id="shuffleBtn" disabled>重新打乱</button>
+        <button id="showHintBtn" disabled>显示原图</button>
+    </div>
+    <div class="game-container">
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            <p class="hint-text">拖拽拼图块到正确位置，靠近时会自动吸附</p>
+        </div>
+        <div class="info-panel">
+            <h3>游戏信息</h3>
+            <div class="stat"><span>难度:</span><span id="diffDisplay">-</span></div>
+            <div class="stat"><span>总块数:</span><span id="totalPieces">-</span></div>
+            <div class="stat"><span>正确位置:</span><span id="correctPieces">0</span></div>
+            <div class="stat"><span>移动次数:</span><span id="moveCount">0</span></div>
+            <div class="stat"><span>用时:</span><span id="timer">00:00</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="progressBar">0%</div></div>
+            <h3 style="margin-top: 20px;">原图预览</h3>
+            <img id="preview" class="preview-img" style="display: none;">
+        </div>
+    </div>
+    <div class="victory-overlay" id="victoryOverlay">
+        <div class="victory-content">
+            <h2>🎉 恭喜完成！</h2>
+            <p>你用了 <span id="finalTime">00:00</span> 完成了拼图！</p>
+            <p>移动次数: <span id="finalMoves">0</span></p>
+            <button onclick="closeVictory()">再玩一次</button>
+        </div>
+    </div>
+    <script>
+        const state = {
+            image: null,
+            pieces: [],
+            gridSize: 4,
+            pieceWidth: 0,
+            pieceHeight: 0,
+            canvasWidth: 600,
+            canvasHeight: 600,
+            selectedPiece: null,
+            dragOffset: { x: 0, y: 0 },
+            isDragging: false,
+            moveCount: 0,
+            startTime: null,
+            timerInterval: null,
+            isGameActive: false,
+            showHint: false,
+            nextZIndex: 1
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const imageInput = document.getElementById('imageInput');
+        const difficultySelect = document.getElementById('difficulty');
+        const startBtn = document.getElementById('startBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const showHintBtn = document.getElementById('showHintBtn');
+        const previewImg = document.getElementById('preview');
+
+        function initCanvas() {
+            canvas.width = state.canvasWidth;
+            canvas.height = state.canvasHeight;
+        }
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    const maxSize = 600;
+                    const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+                    state.canvasWidth = Math.round(img.width * ratio);
+                    state.canvasHeight = Math.round(img.height * ratio);
+                    canvas.width = state.canvasWidth;
+                    canvas.height = state.canvasHeight;
+                    previewImg.src = img.src;
+                    previewImg.style.display = 'block';
+                    startBtn.disabled = false;
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        difficultySelect.addEventListener('change', (e) => {
+            state.gridSize = parseInt(e.target.value);
+        });
+
+        startBtn.addEventListener('click', startGame);
+        shuffleBtn.addEventListener('click', shufflePieces);
+
+        showHintBtn.addEventListener('mousedown', () => { state.showHint = true; draw(); });
+        showHintBtn.addEventListener('mouseup', () => { state.showHint = false; draw(); });
+        showHintBtn.addEventListener('mouseleave', () => { state.showHint = false; draw(); });
+
+        function createPieces() {
+            state.pieces = [];
+            state.pieceWidth = state.canvasWidth / state.gridSize;
+            state.pieceHeight = state.canvasHeight / state.gridSize;
+            state.nextZIndex = 1;
+
+            for (let row = 0; row < state.gridSize; row++) {
+                for (let col = 0; col < state.gridSize; col++) {
+                    state.pieces.push({
+                        id: row * state.gridSize + col,
+                        correctRow: row,
+                        correctCol: col,
+                        currentX: col * state.pieceWidth,
+                        currentY: row * state.pieceHeight,
+                        isPlaced: false,
+                        zIndex: 0
+                    });
+                }
+            }
+        }
+
+        function shufflePieces() {
+            const margin = 30;
+            const availableW = state.canvasWidth - state.pieceWidth - margin * 2;
+            const availableH = state.canvasHeight - state.pieceHeight - margin * 2;
+
+            state.pieces.forEach(piece => {
+                piece.isPlaced = false;
+                piece.zIndex = 0;
+                piece.currentX = margin + Math.random() * Math.max(1, availableW);
+                piece.currentY = margin + Math.random() * Math.max(1, availableH);
+            });
+            state.nextZIndex = 1;
+            state.moveCount = 0;
+            updateStats();
+            draw();
+        }
+
+        function startGame() {
+            state.gridSize = parseInt(difficultySelect.value);
+            createPieces();
+            shufflePieces();
+            state.isGameActive = true;
+            state.moveCount = 0;
+            state.startTime = Date.now();
+            shuffleBtn.disabled = false;
+            showHintBtn.disabled = false;
+            document.getElementById('diffDisplay').textContent = state.gridSize + 'x' + state.gridSize;
+            document.getElementById('totalPieces').textContent = state.gridSize * state.gridSize;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(updateTimer, 1000);
+            updateStats();
+            draw();
+        }
+
+        function updateTimer() {
+            if (!state.isGameActive) return;
+            const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('timer').textContent = minutes + ':' + seconds;
+        }
+
+        function updateStats() {
+            document.getElementById('moveCount').textContent = state.moveCount;
+            const correctCount = state.pieces.filter(p => p.isPlaced).length;
+            const total = state.pieces.length;
+            const percentage = Math.round((correctCount / total) * 100);
+            document.getElementById('correctPieces').textContent = correctCount;
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressBar').textContent = percentage + '%';
+            if (correctCount === total && state.isGameActive) gameWin();
+        }
+
+        function gameWin() {
+            state.isGameActive = false;
+            clearInterval(state.timerInterval);
+            const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('finalTime').textContent = minutes + ':' + seconds;
+            document.getElementById('finalMoves').textContent = state.moveCount;
+            document.getElementById('victoryOverlay').classList.add('show');
+        }
+
+        window.closeVictory = function() {
+            document.getElementById('victoryOverlay').classList.remove('show');
+            shufflePieces();
+        };
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            if (state.showHint && state.image) {
+                ctx.globalAlpha = 0.3;
+                ctx.drawImage(state.image, 0, 0, state.canvasWidth, state.canvasHeight);
+                ctx.globalAlpha = 1;
+            }
+            // 已放置的块先画（底层），未放置的后画（上层），拖拽中的最高层
+            const sortedPieces = [...state.pieces].sort((a, b) => {
+                if (a.isPlaced && !b.isPlaced) return -1;
+                if (!a.isPlaced && b.isPlaced) return 1;
+                return a.zIndex - b.zIndex;
+            });
+            sortedPieces.forEach(piece => drawPiece(piece));
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= state.gridSize; i++) {
+                const pos = i * (state.canvasWidth / state.gridSize);
+                ctx.beginPath();
+                ctx.moveTo(pos, 0);
+                ctx.lineTo(pos, state.canvasHeight);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, pos);
+                ctx.lineTo(state.canvasWidth, pos);
+                ctx.stroke();
+            }
+        }
+
+        function drawPiece(piece) {
+            if (!state.image) return;
+            const sWidth = state.image.width / state.gridSize;
+            const sHeight = state.image.height / state.gridSize;
+            const sx = piece.correctCol * sWidth;
+            const sy = piece.correctRow * sHeight;
+            ctx.save();
+            if (!piece.isPlaced) {
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 3;
+                ctx.shadowOffsetY = 3;
+            }
+            ctx.beginPath();
+            ctx.rect(piece.currentX, piece.currentY, state.pieceWidth, state.pieceHeight);
+            ctx.clip();
+            ctx.drawImage(state.image, sx, sy, sWidth, sHeight, piece.currentX, piece.currentY, state.pieceWidth, state.pieceHeight);
+            ctx.strokeStyle = piece.isPlaced ? '#4CAF50' : '#667eea';
+            ctx.lineWidth = piece.isPlaced ? 3 : 2;
+            ctx.strokeRect(piece.currentX, piece.currentY, state.pieceWidth, state.pieceHeight);
+            if (piece.isPlaced) {
+                ctx.fillStyle = 'rgba(76, 175, 80, 0.2)';
+                ctx.fillRect(piece.currentX, piece.currentY, state.pieceWidth, state.pieceHeight);
+            }
+            ctx.restore();
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function getPieceAt(x, y) {
+            // 优先检测未放置的块（从上层到下层）
+            const unplaced = state.pieces.filter(p => !p.isPlaced).sort((a, b) => b.zIndex - a.zIndex);
+            for (const piece of unplaced) {
+                if (x >= piece.currentX && x <= piece.currentX + state.pieceWidth &&
+                    y >= piece.currentY && y <= piece.currentY + state.pieceHeight) {
+                    return piece;
+                }
+            }
+            return null;
+        }
+
+        function checkSnap(piece) {
+            const correctX = piece.correctCol * state.pieceWidth;
+            const correctY = piece.correctRow * state.pieceHeight;
+            // 根据难度动态调整阈值：块越大，阈值越小（像素值）
+            const baseThreshold = Math.min(state.pieceWidth, state.pieceHeight) * 0.25;
+            const threshold = Math.max(15, Math.min(baseThreshold, 40));
+            const dist = Math.sqrt(Math.pow(piece.currentX - correctX, 2) + Math.pow(piece.currentY - correctY, 2));
+            if (dist < threshold) {
+                piece.currentX = correctX;
+                piece.currentY = correctY;
+                piece.isPlaced = true;
+                piece.zIndex = 0; // 放置后层级归零，不再遮挡其他块
+                return true;
+            }
+            return false;
+        }
+
+        function onDown(e) {
+            if (!state.isGameActive) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            const piece = getPieceAt(pos.x, pos.y);
+            if (piece) {
+                state.selectedPiece = piece;
+                state.isDragging = true;
+                state.dragOffset = { x: pos.x - piece.currentX, y: pos.y - piece.currentY };
+                piece.zIndex = state.nextZIndex++;
+                draw();
+            }
+        }
+
+        function onMove(e) {
+            if (!state.isDragging || !state.selectedPiece) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            let newX = pos.x - state.dragOffset.x;
+            let newY = pos.y - state.dragOffset.y;
+            // 边界限制，留出一点空间方便拖拽边缘块
+            newX = Math.max(-state.pieceWidth * 0.3, Math.min(state.canvasWidth - state.pieceWidth * 0.7, newX));
+            newY = Math.max(-state.pieceHeight * 0.3, Math.min(state.canvasHeight - state.pieceHeight * 0.7, newY));
+            state.selectedPiece.currentX = newX;
+            state.selectedPiece.currentY = newY;
+            draw();
+        }
+
+        function onUp(e) {
+            if (!state.isDragging || !state.selectedPiece) return;
+            const piece = state.selectedPiece;
+            if (checkSnap(piece)) {
+                state.moveCount++;
+                updateStats();
+            }
+            state.isDragging = false;
+            state.selectedPiece = null;
+            draw();
+        }
+
+        canvas.addEventListener('mousedown', onDown);
+        canvas.addEventListener('mousemove', onMove);
+        canvas.addEventListener('mouseup', onUp);
+        canvas.addEventListener('mouseleave', onUp);
+        canvas.addEventListener('touchstart', onDown, { passive: false });
+        canvas.addEventListener('touchmove', onMove, { passive: false });
+        canvas.addEventListener('touchend', onUp);
+
+        initCanvas();
+        draw();
+    </script>
+</body>
+</html>
