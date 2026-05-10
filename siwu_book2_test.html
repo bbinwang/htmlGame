@@ -137,7 +137,25 @@
             margin-bottom: 10px;
             transition: min-height 0.3s;
         }
-        .hint-anim-area.active { min-height: 160px; }
+        .hint-anim-area.active { min-height: 360px; }
+
+        .hint-canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+            background: #f0f8ff;
+            border: 2px solid #dfe6e9;
+        }
+        .hint-canvas-wrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+            animation: canvasPop 0.5s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes canvasPop {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
 
         .parts-row {
             display: flex;
@@ -461,7 +479,207 @@ const CHAR_DATA = {
 '泳': { parts:['氵','永'], tip:'左边三点水，右边一个永，永远在水里游就是游泳。' }
 };
 
-// ===== 语音播报 + 部件动画 =====
+// ===== Canvas 绘图辅助 =====
+function _face(c,x,y,r,skin='#ffd93d',eyeColor='#2d3436'){
+    c.fillStyle=skin;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
+    c.fillStyle=eyeColor;c.beginPath();c.arc(x-r*.3,y-r*.15,r*.09,0,Math.PI*2);c.fill();
+    c.beginPath();c.arc(x+r*.3,y-r*.15,r*.09,0,Math.PI*2);c.fill();
+    c.strokeStyle=eyeColor;c.lineWidth=Math.max(1.5,r*.06);c.beginPath();c.arc(x,y+r*.1,r*.28,.1*Math.PI,.9*Math.PI);c.stroke();
+    c.fillStyle='rgba(255,140,140,.35)';c.beginPath();c.arc(x-r*.5,y+r*.2,r*.13,0,Math.PI*2);c.fill();
+    c.beginPath();c.arc(x+r*.5,y+r*.2,r*.13,0,Math.PI*2);c.fill();
+}
+function _stick(c,x,y,h,pose='stand',col='#e17055'){
+    c.strokeStyle=col;c.lineWidth=3;c.lineCap='round';
+    // head
+    c.fillStyle='#ffd93d';c.beginPath();c.arc(x,y-h*.7,h*.12,0,Math.PI*2);c.fill();c.stroke();
+    // body
+    c.beginPath();c.moveTo(x,y-h*.58);c.lineTo(x,y-h*.2);c.stroke();
+    // legs
+    let lx=x-h*.15,rx=x+h*.15,by=y;
+    if(pose==='run'){lx=x-h*.25;rx=x+h*.25;by=y-h*.05;}
+    if(pose==='jump'){lx=x-h*.2;rx=x+h*.2;by=y-h*.15;}
+    c.beginPath();c.moveTo(x,y-h*.2);c.lineTo(lx,by);c.stroke();
+    c.beginPath();c.moveTo(x,y-h*.2);c.lineTo(rx,by);c.stroke();
+    // arms
+    let la=-.7*Math.PI,ra=-.3*Math.PI;
+    if(pose==='wave'){ra=-.1*Math.PI;}
+    if(pose==='run'){la=-.5*Math.PI;ra=-.5*Math.PI;}
+    if(pose==='jump'){la=-.9*Math.PI;ra=-.1*Math.PI;}
+    if(pose==='reach'){la=ra=-.5*Math.PI;}
+    c.beginPath();c.moveTo(x,y-h*.5);c.lineTo(x+Math.cos(la)*h*.3,y-h*.5+Math.sin(la)*h*.3);c.stroke();
+    c.beginPath();c.moveTo(x,y-h*.5);c.lineTo(x+Math.cos(ra)*h*.3,y-h*.5+Math.sin(ra)*h*.3);c.stroke();
+}
+function _sun(c,x,y,r){
+    c.fillStyle='#feca57';c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
+    c.strokeStyle='#f39c12';c.lineWidth=2;
+    for(let i=0;i<8;i++){let a=i*Math.PI/4;c.beginPath();c.moveTo(x+Math.cos(a)*(r+4),y+Math.sin(a)*(r+4));c.lineTo(x+Math.cos(a)*(r+14),y+Math.sin(a)*(r+14));c.stroke();}
+    c.fillStyle='#f39c12';c.beginPath();c.arc(x-r*.25,y-r*.2,r*.08,0,Math.PI*2);c.fill();
+    c.beginPath();c.arc(x+r*.25,y-r*.2,r*.08,0,Math.PI*2);c.fill();
+    c.strokeStyle='#e17055';c.lineWidth=1.5;c.beginPath();c.arc(x,y+r*.1,r*.25,.1*Math.PI,.9*Math.PI);c.stroke();
+}
+function _cloud(c,x,y,r,col='#dfe6e9'){
+    c.fillStyle=col;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.arc(x-r*.7,y+r*.2,r*.7,0,Math.PI*2);c.arc(x+r*.7,y+r*.2,r*.7,0,Math.PI*2);c.arc(x-r*.3,y+r*.3,r*.6,0,Math.PI*2);c.arc(x+r*.3,y+r*.3,r*.6,0,Math.PI*2);c.fill();
+}
+function _tree(c,x,y,h,col='#27ae60'){
+    c.fillStyle='#795548';c.fillRect(x-4,y-h*.2,8,h*.2);
+    c.fillStyle=col;c.beginPath();c.arc(x,y-h*.4,h*.3,0,Math.PI*2);c.fill();
+    c.beginPath();c.arc(x-h*.15,y-h*.25,h*.22,0,Math.PI*2);c.fill();
+    c.beginPath();c.arc(x+h*.15,y-h*.25,h*.22,0,Math.PI*2);c.fill();
+}
+function _bird(c,x,y,s,col='#6c5ce7'){
+    c.fillStyle=col;c.beginPath();c.ellipse(x,y,s*1.2,s,0,0,Math.PI*2);c.fill();
+    c.fillStyle='#e17055';c.beginPath();c.moveTo(x+s*1.2,y-s*.1);c.lineTo(x+s*1.8,y+s*.05);c.lineTo(x+s*1.2,y+s*.2);c.fill();
+    c.fillStyle='#fff';c.beginPath();c.arc(x+s*.4,y-s*.3,s*.25,0,Math.PI*2);c.fill();
+    c.fillStyle='#2d3436';c.beginPath();c.arc(x+s*.5,y-s*.3,s*.12,0,Math.PI*2);c.fill();
+    c.strokeStyle=col;c.lineWidth=2;c.beginPath();c.moveTo(x-s*.5,y-s*.3);c.quadraticCurveTo(x-s*1.5,y-s*1.2,x-s*1.8,y-s*.5);c.stroke();
+    c.beginPath();c.moveTo(x-s*.5,y+s*.1);c.quadraticCurveTo(x-s*1.5,y-s*.8,x-s*1.8,y-s*.1);c.stroke();
+}
+function _fish(c,x,y,s,col='#0984e3'){
+    c.fillStyle=col;c.beginPath();c.ellipse(x,y,s*1.5,s,0,0,Math.PI*2);c.fill();
+    c.beginPath();c.moveTo(x-s*1.5,y);c.lineTo(x-s*2.2,y-s*.8);c.lineTo(x-s*2.2,y+s*.8);c.fill();
+    c.fillStyle='#fff';c.beginPath();c.arc(x+s*.5,y-s*.3,s*.25,0,Math.PI*2);c.fill();
+    c.fillStyle='#2d3436';c.beginPath();c.arc(x+s*.6,y-s*.3,s*.12,0,Math.PI*2);c.fill();
+    c.strokeStyle='#2d3436';c.lineWidth=1.5;c.beginPath();c.arc(x+s*.1,y+s*.2,s*.15,0,Math.PI);c.stroke();
+}
+function _mountain(c,x,y,w,h,col='#6ab04c'){
+    c.fillStyle=col;c.beginPath();c.moveTo(x-w/2,y);c.lineTo(x,y-h);c.lineTo(x+w/2,y);c.fill();
+    c.fillStyle='#fff';c.beginPath();c.moveTo(x-w*.15,y-h*.7);c.lineTo(x,y-h);c.lineTo(x+w*.15,y-h*.7);c.fill();
+}
+function _speech(c,x,y,w,h,text){
+    c.fillStyle='#fff';c.strokeStyle='#b2bec3';c.lineWidth=1.5;
+    c.beginPath();c.moveTo(x-w/2+10,y-h/2);c.lineTo(x+w/2-10,y-h/2);c.quadraticCurveTo(x+w/2,y-h/2,x+w/2,y-h/2+10);c.lineTo(x+w/2,y+h/2-10);c.quadraticCurveTo(x+w/2,y+h/2,x+w/2-10,y+h/2);c.lineTo(x-w/2+10,y+h/2);c.quadraticCurveTo(x-w/2,y+h/2,x-w/2,y+h/2-10);c.lineTo(x-w/2,y-h/2+10);c.quadraticCurveTo(x-w/2,y-h/2,x-w/2+10,y-h/2);c.fill();c.stroke();
+    c.beginPath();c.moveTo(x-5,y+h/2);c.lineTo(x-10,y+h/2+12);c.lineTo(x+8,y+h/2);c.fill();c.stroke();
+    c.fillStyle='#2d3436';c.font='bold 14px sans-serif';c.textAlign='center';c.fillText(text,x,y+5);
+}
+function _water(c,x,y,w){
+    c.strokeStyle='#74b9ff';c.lineWidth=2;c.beginPath();
+    for(let i=0;i<3;i++){let yy=y+i*8;c.beginPath();c.moveTo(x-w/2,yy);for(let j=0;j<=w;j+=10)c.quadraticCurveTo(x-w/2+j+5,yy+(j%20===0?-4:4),x-w/2+j+10,yy);c.stroke();}
+}
+function _snowflake(c,x,y,r){
+    c.strokeStyle='#74b9ff';c.lineWidth=1.5;
+    for(let i=0;i<6;i++){let a=i*Math.PI/3;c.beginPath();c.moveTo(x,y);c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);c.stroke();
+    let mx=x+Math.cos(a)*r*.6,my=y+Math.sin(a)*r*.6;
+    c.beginPath();c.moveTo(mx,my);c.lineTo(mx+Math.cos(a+.5)*r*.25,my+Math.sin(a+.5)*r*.25);c.stroke();
+    c.beginPath();c.moveTo(mx,my);c.lineTo(mx+Math.cos(a-.5)*r*.25,my+Math.sin(a-.5)*r*.25);c.stroke();}
+}
+function _house(c,x,y,s,col='#e17055'){
+    c.fillStyle=col;c.fillRect(x-s/2,y-s*.4,s,s*.6);
+    c.fillStyle='#795548';c.beginPath();c.moveTo(x-s*.6,y-s*.4);c.lineTo(x,y-s*.9);c.lineTo(x+s*.6,y-s*.4);c.fill();
+    c.fillStyle='#feca57';c.fillRect(x-s*.12,y-s*.2,s*.24,s*.3);
+    c.fillStyle='#636e72';c.fillRect(x+s*.2,y-s*.1,s*.2,s*.2);
+}
+
+// ===== 每个字的 Canvas 插图 =====
+const CHAR_DRAWINGS = {
+'会': c=>{_cloud(c,100,120,30,'#dfe6e9');_stick(c,100,85,50,'stand','#6c5ce7');},
+'见': c=>{c.fillStyle='#fff';c.beginPath();c.ellipse(100,75,50,35,0,0,Math.PI*2);c.fill();c.strokeStyle='#2d3436';c.lineWidth=3;c.stroke();c.fillStyle='#6c5ce7';c.beginPath();c.arc(100,75,22,0,Math.PI*2);c.fill();c.fillStyle='#2d3436';c.beginPath();c.arc(100,75,11,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(93,67,5,0,Math.PI*2);c.fill();c.strokeStyle='#2d3436';c.lineWidth=3;c.beginPath();c.moveTo(82,110);c.lineTo(75,160);c.stroke();c.beginPath();c.moveTo(118,110);c.lineTo(125,160);c.stroke();},
+'早': c=>{_sun(c,100,70,28);c.strokeStyle='#f39c12';c.lineWidth=3;c.beginPath();c.moveTo(100,98);c.lineTo(100,155);c.stroke();c.beginPath();c.moveTo(80,130);c.lineTo(120,130);c.stroke();},
+'雪': c=>{_cloud(c,100,35,25,'#b2bec3');for(let i=0;i<8;i++){_snowflake(c,30+Math.random()*140,70+Math.random()*100,8+i%3*3);}},
+'鸡': c=>{_face(c,100,65,35,'#ffd93d');c.fillStyle='#e17055';c.beginPath();c.moveTo(135,60);c.lineTo(155,55);c.lineTo(135,70);c.fill();c.fillStyle='#e17055';c.beginPath();c.arc(100,105,22,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.beginPath();c.arc(88,118,5,0,Math.PI*2);c.fill();c.beginPath();c.arc(112,118,5,0,Math.PI*2);c.fill();c.fillStyle='#f39c12';c.beginPath();c.moveTo(75,65);c.lineTo(55,55);c.lineTo(70,75);c.fill();c.beginPath();c.moveTo(125,65);c.lineTo(145,55);c.lineTo(130,75);c.fill();},
+'绿': c=>{c.fillStyle='#00b894';c.beginPath();c.ellipse(100,100,55,70,0,0,Math.PI*2);c.fill();c.fillStyle='#55efc4';c.beginPath();c.moveTo(100,30);c.lineTo(55,120);c.lineTo(100,100);c.fill();c.beginPath();c.moveTo(100,30);c.lineTo(145,120);c.lineTo(100,100);c.fill();c.strokeStyle='#00b894';c.lineWidth=3;c.beginPath();c.moveTo(100,100);c.lineTo(100,170);c.stroke();},
+'黄': c=>{c.fillStyle='#fdcb6e';c.beginPath();c.arc(100,80,40,0,Math.PI*2);c.fill();for(let i=0;i<8;i++){let a=i*Math.PI/4;c.fillStyle='#f39c12';c.beginPath();c.ellipse(100+Math.cos(a)*55,80+Math.sin(a)*55,12,6,a,0,Math.PI*2);c.fill();}c.fillStyle='#6c5ce7';c.beginPath();c.arc(90,75,4,0,Math.PI*2);c.fill();c.beginPath();c.arc(110,75,4,0,Math.PI*2);c.fill();c.strokeStyle='#6c5ce7';c.lineWidth=2;c.beginPath();c.arc(100,88,10,.1*Math.PI,.9*Math.PI);c.stroke();},
+'青': c=>{_mountain(c,60,130,100,80,'#55efc4');_mountain(c,140,130,80,60,'#00cec9');c.fillStyle='#81ecec';c.beginPath();c.arc(100,40,20,0,Math.PI*2);c.fill();},
+'鱼': c=>{_fish(c,100,90,28,'#0984e3');for(let i=0;i<4;i++){let bx=40+i*35,by=140+Math.sin(i)*8;c.fillStyle='#74b9ff';c.beginPath();c.ellipse(bx,by,3,6,0,0,Math.PI*2);c.fill();}},
+'做': c=>{_stick(c,80,160,60,'stand','#e17055');c.fillStyle='#feca57';c.fillRect(115,110,35,45);c.fillStyle='#636e72';c.fillRect(120,115,10,15);c.fillRect(135,115,10,15);},
+'飞': c=>{_bird(c,100,90,22,'#6c5ce7');for(let i=0;i<3;i++){_cloud(c,40+i*55,40+i*15,15+i*3,'#dfe6e9');}},
+'跑': c=>{_stick(c,100,155,65,'run','#e17055');for(let i=1;i<=3;i++){c.strokeStyle='#b2bec3';c.lineWidth=2;c.beginPath();c.moveTo(130+i*8,150-i*3);c.lineTo(140+i*10,145-i*5);c.stroke();}},
+'要': c=>{_face(c,100,65,30,'#fab1a0');c.fillStyle='#fd79a8';c.beginPath();c.arc(70,65,8,0,Math.PI*2);c.arc(130,65,8,0,Math.PI*2);c.fill();c.fillStyle='#fd79a8';c.beginPath();c.moveTo(100,95);c.lineTo(90,170);c.lineTo(110,170);c.fill();},
+'吃': c=>{_face(c,100,60,30);c.fillStyle='#e17055';c.beginPath();c.arc(100,100,15,0,Math.PI*2);c.fill();c.fillStyle='#d63031';c.beginPath();c.moveTo(85,98);c.lineTo(75,90);c.lineTo(78,100);c.fill();c.beginPath();c.moveTo(115,98);c.lineTo(125,90);c.lineTo(122,100);c.fill();},
+'鸟': c=>{_bird(c,100,85,25,'#6c5ce7');c.strokeStyle='#f39c12';c.lineWidth=2;for(let i=0;i<3;i++){c.beginPath();c.moveTo(75+i*15,130);c.lineTo(70+i*15,145);c.lineTo(85+i*15,145);c.fill();}},
+'他': c=>{_stick(c,100,155,65,'wave','#6c5ce7');c.fillStyle='#6c5ce7';c.beginPath();c.arc(135,115,5,0,Math.PI*2);c.fill();},
+'们': c=>{_stick(c,60,155,60,'stand','#e17055');_stick(c,100,155,60,'stand','#6c5ce7');c.fillStyle='#795548';c.fillRect(125,70,8,90);c.fillStyle='#e17055';c.beginPath();c.arc(129,65,15,0,Math.PI*2);c.fill();},
+'春': c=>{_sun(c,145,35,18);for(let i=0;i<5;i++){let fx=25+i*35,fy=120+Math.sin(i*2)*15;c.strokeStyle='#27ae60';c.lineWidth=2;c.beginPath();c.moveTo(fx,fy+20);c.lineTo(fx,fy);c.stroke();c.fillStyle=['#fd79a8','#fdcb6e','#fd79a8','#fdcb6e','#fd79a8'][i];c.beginPath();c.arc(fx,fy,8,0,Math.PI*2);c.fill();}},
+'夏': c=>{_sun(c,100,45,32);c.fillStyle='#f39c12';for(let i=0;i<8;i++){let a=i*Math.PI/4;c.beginPath();c.moveTo(100+Math.cos(a)*35,45+Math.sin(a)*35);c.lineTo(100+Math.cos(a)*45,45+Math.sin(a)*45);c.stroke();}_water(c,100,140,160);c.fillStyle='#74b9ff';c.fillRect(30,145,140,40);},
+'秋': c=>{_tree(c,100,155,80,'#e17055');for(let i=0;i<5;i++){c.fillStyle=['#e17055','#fdcb6e','#d63031','#e17055','#fdcb6e'][i];c.beginPath();c.arc(35+i*30,40+Math.random()*20,7,0,Math.PI*2);c.fill();}},
+'冬': c=>{c.fillStyle='#fff';c.beginPath();c.arc(100,100,35,0,Math.PI*2);c.fill();c.beginPath();c.arc(100,70,22,0,Math.PI*2);c.fill();c.fillStyle='#2d3436';c.fillRect(82,55,36,5);c.fillRect(92,42,16,15);c.fillStyle='#e17055';c.beginPath();c.moveTo(97,80);c.lineTo(85,90);c.lineTo(115,90);c.fill();for(let i=0;i<4;i++){_snowflake(c,30+i*40,20+i*8,6);}},
+'季': c=>{let cols=['#55efc4','#fdcb6e','#e17055','#74b9ff'],labels=['春','夏','秋','冬'];for(let i=0;i<4;i++){c.fillStyle=cols[i];c.beginPath();c.arc(45+i*40,90,18,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.font='bold 14px sans-serif';c.textAlign='center';c.fillText(labels[i],45+i*40,95);}},
+'都': c=>{for(let i=0;i<4;i++){_stick(c,50+i*30,155,45,'stand',['#e17055','#6c5ce7','#00b894','#fdcb6e'][i]);}},
+'个': c=>{_stick(c,100,160,70,'stand','#2d3436');c.fillStyle='#636e72';c.fillRect(99,170,3,10);},
+'狗': c=>{_face(c,100,70,30,'#fab1a0');c.fillStyle='#d63031';c.beginPath();c.ellipse(100,82,12,8,0,0,Math.PI*2);c.fill();c.fillStyle='#795548';c.beginPath();c.ellipse(85,40,8,15,-.3,0,Math.PI*2);c.fill();c.beginPath();c.ellipse(115,40,8,15,.3,0,Math.PI*2);c.fill();c.fillStyle='#fab1a0';c.beginPath();c.arc(100,115,25,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.beginPath();c.moveTo(115,118);c.lineTo(140,118);c.lineTo(140,125);c.quadraticCurveTo(140,135,130,135);c.lineTo(115,130);c.fill();},
+'猫': c=>{_face(c,100,75,30,'#fab1a0');c.fillStyle='#6c5ce7';c.beginPath();c.arc(100,85,6,0,Math.PI*2);c.fill();c.fillStyle='#636e72';c.beginPath();c.moveTo(72,55);c.lineTo(65,30);c.lineTo(85,50);c.fill();c.beginPath();c.moveTo(128,55);c.lineTo(135,30);c.lineTo(115,50);c.fill();for(let i=0;i<3;i++){c.strokeStyle='#b2bec3';c.lineWidth=1.5;c.beginPath();c.moveTo(55+i*5,75);c.lineTo(30,70+i*10);c.stroke();c.beginPath();c.moveTo(145-i*5,75);c.lineTo(170,70+i*10);c.stroke();}},
+'蓝': c=>{c.fillStyle='#74b9ff';c.fillRect(20,15,160,90);c.fillStyle='#fff';_cloud(c,50,35,12);_cloud(c,130,45,10);_face(c,100,55,15,'#feca57');c.fillStyle='#55efc4';c.fillRect(20,105,160,65);c.fillStyle='#27ae60';for(let i=0;i<6;i++){c.beginPath();c.arc(30+i*30,135,10,0,Math.PI*2);c.fill();}},
+'落': c=>{_tree(c,100,155,70,'#27ae60');c.fillStyle='#e17055';for(let i=0;i<5;i++){c.beginPath();c.arc(40+i*30,35+i*15,6,0,Math.PI*2);c.fill();}c.strokeStyle='#b2bec3';c.lineWidth=1.5;for(let i=0;i<3;i++){c.beginPath();c.moveTo(50+i*35,50);c.quadraticCurveTo(55+i*35,100,50+i*35,155);c.stroke();}},
+'真': c=>{c.fillStyle='#fff';c.beginPath();c.ellipse(100,85,45,30,0,0,Math.PI*2);c.fill();c.strokeStyle='#2d3436';c.lineWidth=3;c.stroke();c.fillStyle='#2d3436';c.beginPath();c.arc(100,85,18,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(100,85,8,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(93,78,4,0,Math.PI*2);c.fill();c.fillStyle='#00b894';c.beginPath();c.arc(100,155,10,0,Math.PI*2);c.fill();c.strokeStyle='#00b894';c.lineWidth=2;c.beginPath();c.moveTo(100,115);c.lineTo(100,145);c.stroke();},
+'开': c=>{c.fillStyle='#795548';c.fillRect(55,30,10,140);c.fillRect(135,30,10,140);c.fillStyle='#e17055';c.fillRect(45,90,55,8);c.fillRect(100,60,55,8);c.fillStyle='#feca57';c.beginPath();c.arc(65,85,8,0,Math.PI*2);c.fill();c.beginPath();c.arc(135,55,8,0,Math.PI*2);c.fill();},
+'说': c=>{_face(c,100,65,30);_speech(c,100,140,70,35,'你好！');},
+'也': c=>{c.fillStyle='#27ae60';c.strokeStyle='#27ae60';c.lineWidth=6;c.lineCap='round';c.beginPath();c.moveTo(50,130);c.bezierCurveTo(50,60,100,40,140,80);c.bezierCurveTo(160,100,130,140,100,120);c.stroke();c.fillStyle='#e74c3c';c.beginPath();c.arc(140,80,5,0,Math.PI*2);c.fill();},
+'马': c=>{c.fillStyle='#a0522d';c.beginPath();c.ellipse(100,90,45,30,-.1,0,Math.PI*2);c.fill();c.fillStyle='#8B4513';c.beginPath();c.arc(55,70,20,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(50,65,5,0,Math.PI*2);c.fill();c.fillStyle='#2d3436';c.beginPath();c.arc(52,65,3,0,Math.PI*2);c.fill();c.fillStyle='#a0522d';c.beginPath();c.moveTo(40,55);c.lineTo(35,35);c.lineTo(50,50);c.fill();c.beginPath();c.moveTo(55,52);c.lineTo(50,32);c.lineTo(60,48);c.fill();c.fillStyle='#2d3436';for(let i=0;i<4;i++)c.fillRect(75+i*18,115,6,30);},
+'米': c=>{c.fillStyle='#feca57';c.beginPath();c.arc(100,80,35,0,Math.PI*2);c.fill();c.fillStyle='#fff';for(let i=0;i<8;i++){let a=i*Math.PI/4;c.beginPath();c.ellipse(100+Math.cos(a)*22,80+Math.sin(a)*22,5,3,a,0,Math.PI*2);c.fill();}c.fillStyle='#795548';c.beginPath();c.arc(100,80,10,0,Math.PI*2);c.fill();},
+'哥': c=>{_face(c,70,55,22,'#fab1a0');_face(c,130,55,22,'#fab1a0');c.fillStyle='#6c5ce7';c.fillRect(55,77,30,70);c.fillStyle='#0984e3';c.fillRect(115,77,30,70);c.fillStyle='#feca57';c.font='bold 16px sans-serif';c.textAlign='center';c.fillText('哥',100,155);},
+'姐': c=>{_face(c,100,55,28,'#fab1a0');c.fillStyle='#fd79a8';c.beginPath();c.moveTo(100,83);c.lineTo(70,160);c.lineTo(130,160);c.fill();c.fillStyle='#6c5ce7';c.beginPath();c.arc(72,55,10,0,Math.PI*2);c.fill();c.beginPath();c.arc(128,55,10,0,Math.PI*2);c.fill();c.fillStyle='#fdcb6e';c.beginPath();c.arc(100,48,5,0,Math.PI*2);c.fill();},
+'来': c=>{_stick(c,100,160,70,'wave','#e17055');c.strokeStyle='#e17055';c.lineWidth=3;c.beginPath();c.moveTo(65,95);c.lineTo(50,70);c.stroke();c.beginPath();c.moveTo(135,95);c.lineTo(150,70);c.stroke();},
+'黑': c=>{c.fillStyle='#2d3436';c.fillRect(30,25,140,130);c.fillStyle='#fff';c.beginPath();c.arc(70,75,8,0,Math.PI*2);c.fill();c.beginPath();c.arc(130,75,8,0,Math.PI*2);c.fill();c.fillStyle='#feca57';c.beginPath();c.arc(100,105,20,0,Math.PI*2);c.fill();c.fillStyle='#2d3436';c.beginPath();c.arc(100,105,8,0,Math.PI*2);c.fill();},
+'去': c=>{_face(c,100,55,25);c.fillStyle='#636e72';c.beginPath();c.arc(100,105,20,0,Math.PI*2);c.fill();c.strokeStyle='#636e72';c.lineWidth=3;c.beginPath();c.moveTo(85,125);c.lineTo(60,160);c.stroke();c.beginPath();c.moveTo(115,125);c.lineTo(140,160);c.stroke();},
+'出': c=>{_mountain(c,100,170,120,80,'#6ab04c');_mountain(c,100,130,80,55,'#55efc4');c.fillStyle='#795548';c.beginPath();c.moveTo(95,170);c.lineTo(95,100);c.lineTo(105,100);c.lineTo(105,170);c.fill();},
+'跳': c=>{_stick(c,100,145,60,'jump','#e17055');for(let i=0;i<3;i++){c.fillStyle='rgba(254,202,87,0.5)';c.beginPath();c.arc(80+i*20,165,3+i*2,0,Math.PI*2);c.fill();}},
+'着': c=>{_face(c,100,60,25,'#fab1a0');c.fillStyle='#55efc4';c.beginPath();c.ellipse(100,55,28,18,-.1,Math.PI,0);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(90,55,6,0,Math.PI*2);c.fill();c.beginPath();c.arc(110,55,6,0,Math.PI*2);c.fill();c.fillStyle='#2d3436';c.beginPath();c.arc(100,85,8,0,Math.PI*2);c.fill();c.strokeStyle='#2d3436';c.lineWidth=2;for(let i=0;i<3;i++){c.beginPath();c.arc(100,85,12+i*6,0,Math.PI*2);c.stroke();}},
+'了': c=>{c.strokeStyle='#e17055';c.lineWidth=6;c.lineCap='round';c.beginPath();c.moveTo(70,40);c.bezierCurveTo(70,40,100,30,120,60);c.bezierCurveTo(130,80,100,110,90,150);c.stroke();},
+'你': c=>{_stick(c,100,155,65,'wave','#0984e3');_speech(c,100,40,50,25,'Hi!');},
+'又': c=>{c.fillStyle='#fab1a0';c.beginPath();c.moveTo(100,30);c.quadraticCurveTo(60,30,50,80);c.quadraticCurveTo(45,110,70,150);c.lineTo(90,150);c.quadraticCurveTo(65,110,75,80);c.quadraticCurveTo(80,55,100,55);c.fill();c.fillStyle='#fab1a0';c.beginPath();c.moveTo(100,55);c.quadraticCurveTo(120,55,125,80);c.quadraticCurveTo(135,110,110,150);c.lineTo(130,150);c.quadraticCurveTo(155,110,150,80);c.quadraticCurveTo(145,30,100,30);c.fill();c.fillStyle='#feca57';c.beginPath();c.arc(105,95,12,0,Math.PI*2);c.fill();},
+'弟': c=>{_face(c,100,60,28,'#fab1a0');c.fillStyle='#2d3436';c.beginPath();c.moveTo(75,38);c.lineTo(70,20);c.lineTo(82,35);c.fill();c.beginPath();c.moveTo(118,38);c.lineTo(122,20);c.lineTo(112,35);c.fill();c.fillStyle='#0984e3';c.fillRect(80,88,40,60);c.strokeStyle='#2d3436';c.lineWidth=3;c.beginPath();c.moveTo(85,148);c.lineTo(75,170);c.stroke();c.beginPath();c.moveTo(115,148);c.lineTo(125,170);c.stroke();},
+'妹': c=>{_face(c,100,55,28,'#fab1a0');c.fillStyle='#2d3436';c.beginPath();c.moveTo(72,48);c.quadraticCurveTo(55,30,65,20);c.quadraticCurveTo(75,10,82,35);c.fill();c.beginPath();c.moveTo(128,48);c.quadraticCurveTo(145,30,135,20);c.quadraticCurveTo(125,10,118,35);c.fill();c.fillStyle='#fd79a8';c.beginPath();c.moveTo(100,83);c.lineTo(75,160);c.lineTo(125,160);c.fill();},
+'东': c=>{c.fillStyle='#55efc4';c.fillRect(85,80,30,70);_sun(c,100,50,22);c.fillStyle='#f39c12';c.beginPath();c.arc(100,50,10,0,Math.PI*2);c.fill();},
+'就': c=>{c.fillStyle='#feca57';c.beginPath();c.moveTo(60,40);c.lineTo(140,40);c.lineTo(160,100);c.lineTo(40,100);c.fill();c.fillStyle='#fff';c.font='bold 28px sans-serif';c.textAlign='center';c.fillText('👍',100,82);},
+'还': c=>{_stick(c,80,155,60,'stand','#6c5ce7');c.fillStyle='#55efc4';c.beginPath();c.moveTo(50,50);c.lineTo(50,170);c.lineTo(170,170);c.lineTo(170,50);c.lineTo(50,50);c.strokeStyle='#55efc4';c.lineWidth=3;c.stroke();c.fillStyle='#27ae60';c.beginPath();c.arc(110,80,15,0,Math.PI*2);c.fill();},
+'快': c=>{c.fillStyle='#e17055';c.beginPath();c.arc(100,40,15,0,Math.PI*2);c.fill();c.strokeStyle='#e17055';c.lineWidth=3;c.beginPath();c.moveTo(100,55);c.lineTo(100,100);c.stroke();c.fillStyle='#e17055';c.beginPath();c.moveTo(100,70);c.lineTo(130,40);c.lineTo(130,55);c.fill();c.fillStyle='#fdcb6e';c.beginPath();c.arc(100,130,30,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.font='bold 20px sans-serif';c.textAlign='center';c.fillText('⚡',100,137);},
+'得': c=>{c.fillStyle='#feca57';c.beginPath();c.moveTo(60,160);c.lineTo(100,40);c.lineTo(140,160);c.fill();c.fillStyle='#fff';c.fillRect(85,100,30,50);c.fillStyle='#f39c12';c.beginPath();c.arc(100,90,8,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.font='bold 22px sans-serif';c.textAlign='center';c.fillText('★',100,92);},
+'西': c=>{c.fillStyle='#fdcb6e';c.beginPath();c.arc(50,80,28,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.beginPath();c.arc(55,75,20,0,Math.PI*2);c.fill();_mountain(c,130,160,80,60,'#6ab04c');},
+'乐': c=>{_face(c,100,60,30);c.strokeStyle='#e17055';c.lineWidth=3;c.beginPath();c.arc(100,68,18,0.1*Math.PI,0.9*Math.PI);c.stroke();c.fillStyle=['#e17055','#fdcb6e','#6c5ce7','#55efc4','#fd79a8'][0];for(let i=0;i<5;i++){c.fillStyle=['#e17055','#fdcb6e','#6c5ce7','#55efc4','#fd79a8'][i];c.beginPath();c.arc(40+i*30,130,10,0,Math.PI*2);c.fill();}},
+'到': c=>{c.strokeStyle='#e17055';c.lineWidth=3;c.beginPath();c.moveTo(30,90);c.lineTo(130,90);c.stroke();c.fillStyle='#e17055';c.beginPath();c.moveTo(130,80);c.lineTo(165,90);c.lineTo(130,100);c.fill();c.fillStyle='#fdcb6e';c.beginPath();c.arc(160,90,18,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.beginPath();c.arc(160,90,8,0,Math.PI*2);c.fill();},
+'起': c=>{_stick(c,90,155,60,'stand','#e17055');c.strokeStyle='#636e72';c.lineWidth=2;c.setLineDash([4,4]);c.beginPath();c.moveTo(30,155);c.lineTo(170,155);c.stroke();c.setLineDash([]);c.fillStyle='#00b894';c.beginPath();c.moveTo(130,155);c.lineTo(130,80);c.lineTo(160,110);c.fill();},
+'玩': c=>{c.fillStyle='#e17055';c.beginPath();c.arc(100,90,40,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(100,90,35,0,Math.PI*2);c.fill();c.fillStyle=['#e17055','#fdcb6e','#6c5ce7','#55efc4','#fd79a8','#f39c12'][0];for(let i=0;i<6;i++){let a=i*Math.PI/3;c.fillStyle=['#e17055','#fdcb6e','#6c5ce7','#55efc4','#fd79a8','#f39c12'][i];c.beginPath();c.arc(100+Math.cos(a)*22,90+Math.sin(a)*22,10,0,Math.PI*2);c.fill();}},
+'捉': c=>{_stick(c,70,155,60,'stand','#e17055');c.fillStyle='#fab1a0';c.beginPath();c.arc(110,90,18,0,Math.PI*2);c.fill();for(let i=0;i<4;i++){c.strokeStyle='#fab1a0';c.lineWidth=4;c.beginPath();c.moveTo(128,82+i*6);c.lineTo(150,78+i*6);c.stroke();}c.fillStyle='#fd79a8';_butterfly(c,140,45);},
+'迷': c=>{c.strokeStyle='#636e72';c.lineWidth=2;c.fillStyle='#eee';for(let i=0;i<5;i++)for(let j=0;j<5;j++){c.fillRect(25+i*32,15+j*34,28,30);c.strokeRect(25+i*32,15+j*34,28,30);}c.fillStyle='#e17055';c.beginPath();c.arc(100,85,12,0,Math.PI*2);c.fill();c.fillStyle='#feca57';c.font='bold 14px sans-serif';c.textAlign='center';c.fillText('?',100,90);},
+'球': c=>{c.fillStyle='#fff';c.beginPath();c.arc(100,90,45,0,Math.PI*2);c.fill();c.strokeStyle='#2d3436';c.lineWidth=2;c.stroke();c.beginPath();c.arc(100,90,45,0,Math.PI*2);c.stroke();c.beginPath();c.moveTo(55,90);c.lineTo(145,90);c.stroke();c.beginPath();c.moveTo(100,45);c.lineTo(100,135);c.stroke();c.beginPath();c.arc(100,90,22,0,Math.PI*2);c.stroke();},
+'很': c=>{_stick(c,60,155,55,'stand','#e17055');_stick(c,140,155,55,'stand','#6c5ce7');c.fillStyle='#e74c3c';c.font='bold 24px sans-serif';c.textAlign='center';c.fillText('≠',100,90);},
+'高': c=>{c.fillStyle='#6c5ce7';c.fillRect(60,30,80,140);c.fillStyle='#fff';for(let i=0;i<4;i++)c.fillRect(70,40+i*32,25,20);c.fillStyle='#feca57';c.beginPath();c.moveTo(60,30);c.lineTo(100,10);c.lineTo(140,30);c.fill();c.fillStyle='#795548';c.fillRect(90,140,20,30);},
+'鸭': c=>{_face(c,100,60,30,'#feca57');c.fillStyle='#e17055';c.beginPath();c.moveTo(130,58);c.lineTo(150,55);c.lineTo(130,68);c.fill();c.fillStyle='#feca57';c.beginPath();c.ellipse(100,115,30,22,0,0,Math.PI*2);c.fill();c.fillStyle='#f39c12';for(let i=0;i<2;i++){c.beginPath();c.moveTo(80+i*25,135);c.lineTo(78+i*25,155);c.lineTo(92+i*25,155);c.fill();}},
+'哈': c=>{_face(c,100,70,40);c.fillStyle='#e17055';c.beginPath();c.arc(100,72,22,0,Math.PI*2);c.fill();c.fillStyle='#d63031';c.beginPath();c.arc(100,75,18,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(100,68,8,0,Math.PI*2);c.fill();for(let i=0;i<3;i++){c.fillStyle='rgba(255,200,0,0.4)';c.beginPath();c.arc(55+i*40,25,8,0,Math.PI*2);c.fill();}},
+'方': c=>{c.strokeStyle='#e17055';c.lineWidth=3;c.strokeRect(55,55,90,90);c.fillStyle='#fdcb6e';c.fillRect(55,55,90,90);c.strokeStyle='#e17055';c.lineWidth=3;c.strokeRect(55,55,90,90);c.beginPath();c.moveTo(100,45);c.lineTo(100,55);c.stroke();},
+'爬': c=>{_stick(c,80,140,55,'stand','#e17055');c.fillStyle='#795548';c.fillRect(130,40,10,120);c.fillStyle='#55efc4';c.beginPath();c.arc(135,35,15,0,Math.PI*2);c.fill();c.strokeStyle='#e17055';c.lineWidth=2;for(let i=0;i<3;i++){c.beginPath();c.moveTo(45+i*20,130);c.lineTo(30+i*20,120);c.stroke();}},
+'藏': c=>{c.fillStyle='#55efc4';c.beginPath();c.ellipse(100,40,60,25,0,0,Math.PI*2);c.fill();for(let i=0;i<4;i++){_tree(c,40+i*40,150,50,'#27ae60');}_face(c,100,120,20,'#fab1a0');c.fillStyle='#55efc4';c.beginPath();c.ellipse(100,100,30,15,0,0,Math.PI*2);c.fill();},
+'兴': c=>{_face(c,100,65,30);c.fillStyle='#fdcb6e';c.font='bold 36px sans-serif';c.textAlign='center';for(let i=0;i<3;i++){c.fillStyle=['#e17055','#fdcb6e','#6c5ce7'][i];c.beginPath();c.arc(45+i*35,140,12,0,Math.PI*2);c.fill();}},
+'向': c=>{c.fillStyle='#dfe6e9';c.fillRect(50,30,100,130);c.fillStyle='#74b9ff';c.fillRect(60,40,80,110);c.fillStyle='#55efc4';c.fillRect(80,70,40,80);c.fillStyle='#e17055';c.beginPath();c.moveTo(100,50);c.lineTo(60,70);c.lineTo(140,70);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(100,55,5,0,Math.PI*2);c.fill();},
+'对': c=>{c.strokeStyle='#00b894';c.lineWidth=4;c.lineCap='round';c.beginPath();c.moveTo(50,100);c.lineTo(85,140);c.lineTo(150,50);c.stroke();},
+'能': c=>{c.fillStyle='#6c5ce7';c.beginPath();c.arc(100,75,25,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.font='bold 28px sans-serif';c.textAlign='center';c.fillText('💪',100,85);c.fillStyle='#e17055';c.font='bold 16px sans-serif';c.fillText('能！',100,140);},
+'叫': c=>{_face(c,70,80,30);_speech(c,145,55,45,35,'啊！');c.fillStyle='#e17055';c.beginPath();c.ellipse(70,83,15,10,0,0,Math.PI*2);c.fill();},
+'变': c=>{c.fillStyle='#55efc4';c.beginPath();c.ellipse(55,100,20,35,0,0,Math.PI*2);c.fill();c.fillStyle='#55efc4';for(let i=0;i<5;i++){c.beginPath();c.arc(55,65+i*3,3,0,Math.PI*2);c.fill();}c.fillStyle='#6c5ce7';c.beginPath();c.moveTo(110,80);c.lineTo(105,50);c.lineTo(120,65);c.lineTo(115,35);c.lineTo(135,60);c.lineTo(125,55);c.lineTo(140,80);c.fill();c.fillStyle='#fdcb6e';c.beginPath();c.arc(120,80,5,0,Math.PI*2);c.fill();c.beginPath();c.arc(130,75,4,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.font='bold 14px sans-serif';c.fillText('→',85,100);},
+'问': c=>{c.fillStyle='#795548';c.fillRect(55,50,10,120);c.fillRect(135,50,10,120);c.fillRect(55,50,90,10);c.fillStyle='#feca57';c.beginPath();c.arc(100,110,22,0,Math.PI*2);c.fill();c.fillStyle='#795548';c.font='bold 28px sans-serif';c.textAlign='center';c.fillText('?',100,118);},
+'成': c=>{c.fillStyle='#feca57';c.beginPath();c.arc(100,80,40,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.beginPath();c.moveTo(70,80);c.lineTo(95,110);c.lineTo(140,50);c.fill();c.fillStyle='#6c5ce7';c.font='bold 16px sans-serif';c.textAlign='center';c.fillText('成功！',100,145);},
+'再': c=>{c.strokeStyle='#6c5ce7';c.lineWidth=3;c.beginPath();c.arc(100,90,35,0,Math.PI*1.5);c.stroke();c.fillStyle='#6c5ce7';c.beginPath();c.moveTo(100,55);c.lineTo(95,65);c.lineTo(105,65);c.fill();c.fillStyle='#feca57';c.font='bold 16px sans-serif';c.textAlign='center';c.fillText('再一次！',100,150);},
+'急': c=>{c.fillStyle='#e17055';c.beginPath();c.arc(100,75,35,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(88,68,6,0,Math.PI*2);c.fill();c.beginPath();c.arc(112,68,6,0,Math.PI*2);c.fill();c.fillStyle='#e74c3c';c.font='bold 18px sans-serif';c.textAlign='center';c.fillText('💦',100,90);c.fillStyle='#e74c3c';c.beginPath();c.arc(100,135,20,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.font='bold 16px sans-serif';c.fillText('心',100,140);},
+'教': c=>{c.fillStyle='#2d3436';c.fillRect(30,30,140,80);c.fillStyle='#55efc4';c.fillRect(35,35,130,70);c.fillStyle='#2d3436';c.font='bold 24px sans-serif';c.textAlign='center';c.fillText('1+1=2',100,75);_stick(c,100,170,50,'stand','#e17055');},
+'门': c=>{c.fillStyle='#795548';c.fillRect(45,30,12,140);c.fillRect(143,30,12,140);c.fillStyle='#e17055';c.beginPath();c.arc(130,110,6,0,Math.PI*2);c.fill();c.fillStyle='#0984e3';c.beginPath();c.arc(70,110,6,0,Math.PI*2);c.fill();c.fillStyle='#feca57';c.beginPath();c.moveTo(57,30);c.lineTo(100,20);c.lineTo(143,30);c.fill();},
+'只': c=>{c.fillStyle='#e17055';c.beginPath();c.arc(100,55,30,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(100,55,25,0,Math.PI*2);c.fill();c.fillStyle='#e17055';c.font='bold 24px sans-serif';c.textAlign='center';c.fillText('1',100,63);c.fillStyle='#636e72';c.font='bold 18px sans-serif';c.fillText('只有一个！',100,140);},
+'回': c=>{c.fillStyle='#795548';c.fillRect(40,30,120,130);c.fillStyle='#feca57';c.fillRect(50,40,100,110);c.fillStyle='#795548';c.fillRect(75,55,50,80);c.fillStyle='#e17055';c.fillRect(85,65,30,60);c.fillStyle='#feca57';c.fillRect(93,85,14,20);},
+'公': c=>{c.fillStyle='#55efc4';c.beginPath();c.arc(100,100,55,0,Math.PI*2);c.fill();c.fillStyle='#27ae60';c.beginPath();c.arc(100,100,45,0,Math.PI*2);c.fill();c.fillStyle='#6c5ce7';c.fillRect(75,80,50,40);c.fillStyle='#fff';c.beginPath();c.arc(100,100,8,0,Math.PI*2);c.fill();},
+'打': c=>{c.fillStyle='#795548';c.fillRect(95,25,10,120);c.fillStyle='#636e72';c.beginPath();c.arc(100,155,12,0,Math.PI*2);c.fill();c.fillStyle='#fab1a0';c.beginPath();c.arc(60,75,20,0,Math.PI*2);c.fill();c.strokeStyle='#e17055';c.lineWidth=3;c.beginPath();c.moveTo(60,95);c.lineTo(60,130);c.stroke();},
+'兔': c=>{c.fillStyle='#fff';c.beginPath();c.ellipse(100,110,30,25,0,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(100,75,22,0,Math.PI*2);c.fill();c.fillStyle='#fab1a0';c.beginPath();c.moveTo(85,58);c.lineTo(80,25);c.lineTo(90,52);c.fill();c.beginPath();c.moveTo(115,58);c.lineTo(120,25);c.lineTo(110,52);c.fill();c.fillStyle='#e74c3c';c.beginPath();c.arc(100,82,5,0,Math.PI*2);c.fill();c.fillStyle='#2d3436';c.beginPath();c.arc(90,72,4,0,Math.PI*2);c.fill();c.beginPath();c.arc(110,72,4,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(100,140,4,0,Math.PI*2);c.fill();},
+'请': c=>{_face(c,100,55,25);c.fillStyle='#6c5ce7';c.beginPath();c.moveTo(100,80);c.lineTo(75,155);c.lineTo(125,155);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(100,110,15,0,Math.PI*2);c.fill();c.fillStyle='#6c5ce7';c.font='bold 14px sans-serif';c.textAlign='center';c.fillText('请',100,115);},
+'过': c=>{c.fillStyle='#795548';c.fillRect(30,120,140,8);_stick(c,100,120,55,'walk','#e17055');c.strokeStyle='#636e72';c.lineWidth=2;c.setLineDash([5,5]);c.beginPath();c.moveTo(25,155);c.lineTo(175,155);c.stroke();c.setLineDash([]);},
+'吗': c=>{_face(c,100,80,30);c.fillStyle='#e17055';c.beginPath();c.ellipse(100,85,15,10,0,0,Math.PI*2);c.fill();c.fillStyle='#feca57';c.font='bold 24px sans-serif';c.textAlign='center';c.fillText('?',100,155);},
+'泳': c=>{_water(c,100,70,160);c.fillStyle='#74b9ff';c.fillRect(20,80,160,100);_face(c,100,65,20,'#ffd93d');c.strokeStyle='#ffd93d';c.lineWidth=3;c.beginPath();c.moveTo(120,75);c.lineTo(150,65);c.stroke();c.beginPath();c.moveTo(80,75);c.lineTo(55,90);c.stroke();}
+};
+
+// butterfly helper for 捉
+function _butterfly(c,x,y){
+    c.fillStyle='#fd79a8';c.beginPath();c.ellipse(x-10,y-5,12,8,-.3,0,Math.PI*2);c.fill();c.beginPath();c.ellipse(x+10,y-5,12,8,.3,0,Math.PI*2);c.fill();c.fillStyle='#6c5ce7';c.beginPath();c.ellipse(x-7,y+5,8,6,-.2,0,Math.PI*2);c.fill();c.beginPath();c.ellipse(x+7,y+5,8,6,.2,0,Math.PI*2);c.fill();c.fillStyle='#2d3436';c.fillRect(x-1,y-8,2,16);
+}
+
+// ===== 绘制字符插图 =====
+function drawCharCanvas(ch) {
+    const area = document.getElementById('hintAnimArea');
+    const wrap = document.createElement('div');
+    wrap.className = 'hint-canvas-wrap';
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 180;
+    canvas.className = 'hint-canvas';
+    wrap.appendChild(canvas);
+    area.insertBefore(wrap, area.firstChild);
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,200,180);
+    if (CHAR_DRAWINGS[ch]) CHAR_DRAWINGS[ch](ctx);
+}
 let hintTimers = [];
 
 function clearHintTimers() {
@@ -489,6 +707,9 @@ function speakTip() {
     charEl.classList.add('hint-active');
     animArea.innerHTML = '';
     animArea.classList.add('active');
+
+    // 0. 绘制 Canvas 插图
+    drawCharCanvas(ch);
 
     const parts = data.parts;
     const tip = data.tip;
