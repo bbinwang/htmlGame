@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四五快读 · 第二册认字测试</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 36px;
+            width: 100%;
+            max-width: 460px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            text-align: center;
+            position: relative;
+        }
+
+        /* ===== 首页 ===== */
+        .title-emoji { font-size: 3em; margin-bottom: 10px; }
+        h1 { color: #2d3436; font-size: 1.8em; margin-bottom: 6px; }
+        .subtitle { color: #636e72; font-size: 1em; margin-bottom: 24px; }
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: left;
+            line-height: 1.8;
+            color: #555;
+            font-size: 0.95em;
+        }
+        .info-box b { color: #2d3436; }
+
+        .btn {
+            display: inline-block;
+            padding: 16px 40px;
+            border: none;
+            border-radius: 16px;
+            font-size: 1.15em;
+            font-weight: bold;
+            cursor: pointer;
+            color: #fff;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+        .btn:active { transform: scale(0.97); }
+        .btn-green { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .btn-blue { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .btn-orange { background: linear-gradient(135deg, #f093fb, #f5576c); }
+
+        /* ===== 测试页 ===== */
+        .progress-text { color: #999; font-size: 0.95em; margin-bottom: 8px; }
+        .progress-bar {
+            width: 100%; height: 10px; background: #eee; border-radius: 5px;
+            margin-bottom: 28px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #43e97b, #38f9d7);
+            border-radius: 5px; transition: width 0.4s ease;
+        }
+
+        .char-display {
+            font-size: 7em;
+            font-weight: bold;
+            color: #2d3436;
+            margin: 10px 0 8px;
+            user-select: none;
+            line-height: 1.2;
+        }
+
+        .char-hint {
+            color: #b2bec3;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+            min-height: 1.2em;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        .btn-group .btn {
+            min-width: 140px;
+            font-size: 1.3em;
+            padding: 18px 32px;
+        }
+        .btn-pass { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .btn-fail { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+
+        .result-list {
+            text-align: left;
+            margin: 16px 0;
+            max-height: 260px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 12px;
+        }
+        .result-list::-webkit-scrollbar { width: 6px; }
+        .result-list::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 4px;
+            border-bottom: 1px solid #f1f2f6;
+            font-size: 1.05em;
+        }
+        .result-item:last-child { border-bottom: none; }
+        .result-item .r-char {
+            font-size: 1.6em;
+            font-weight: bold;
+            width: 50px;
+            text-align: center;
+        }
+        .result-item .r-status {
+            margin-left: auto;
+            font-size: 1.3em;
+        }
+
+        .score-big {
+            font-size: 3em;
+            font-weight: bold;
+            color: #2d3436;
+            margin: 8px 0;
+        }
+        .score-label { color: #636e72; font-size: 1em; }
+
+        .stars-row {
+            font-size: 2.2em;
+            margin: 12px 0;
+            letter-spacing: 4px;
+        }
+
+        /* ===== 全对庆祝 ===== */
+        .confetti {
+            position: fixed;
+            width: 10px; height: 10px;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 999;
+            animation: confettiFall 2s ease forwards;
+        }
+        @keyframes confettiFall {
+            0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+            100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+        }
+
+        .trophy-bounce {
+            animation: trophyBounce 0.6s ease;
+        }
+        @keyframes trophyBounce {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.3); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <!-- ===== 首页 ===== -->
+    <div id="startScreen">
+        <div class="title-emoji">📚</div>
+        <h1>四五快读 · 第二册</h1>
+        <p class="subtitle">认字小测试</p>
+        <div class="info-box">
+            📋 每轮随机抽取 <b>10个字</b>，逐个展示<br>
+            👨‍👩‍👧 家长出示汉字，让孩子认读<br>
+            ✅ 认对了点 <b>认识</b>，不认识点 <b>不认识</b><br>
+            🏆 最后查看得分和详情
+        </div>
+        <button class="btn btn-green" onclick="startTest()">开始测试</button>
+    </div>
+
+    <!-- ===== 测试页 ===== -->
+    <div id="testScreen" class="hidden">
+        <div class="progress-text" id="progressText">第 1 / 10 字</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="char-display" id="charDisplay">人</div>
+        <div class="char-hint" id="charHint">请让孩子认读这个字</div>
+        <div class="btn-group">
+            <button class="btn btn-pass" onclick="mark(true)">✅ 认识</button>
+            <button class="btn btn-fail" onclick="mark(false)">❌ 不认识</button>
+        </div>
+    </div>
+
+    <!-- ===== 结果页 ===== -->
+    <div id="resultScreen" class="hidden">
+        <div id="resultEmoji" class="title-emoji">🎉</div>
+        <div id="resultTitle"><h1>测试完成！</h1></div>
+        <div class="score-label">本次得分</div>
+        <div class="score-big" id="scoreBig">10 / 10</div>
+        <div class="stars-row" id="starsRow"></div>
+        <div class="result-list" id="resultList"></div>
+        <div style="margin-top:20px;">
+            <button class="btn btn-blue" onclick="startTest()" style="margin-right:10px;">再测一次</button>
+            <button class="btn btn-orange" onclick="backHome()">返回首页</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== 四五快读第二册生字 =====
+const ALL_CHARS = '会见早雪鸡绿黄青鱼做飞跑要吃鸟他们春夏秋冬季都个狗猫蓝落真开说也马米哥姐来黑去出跳着了你又弟妹东就还快得西乐到起玩捉迷球很高鸭哈方爬藏兴向对能叫变问成再急教门只回公打兔请过吗泳'.split('');
+
+const ROUND_SIZE = 10;
+
+// ===== 工具 =====
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ===== 音效 =====
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+function playTone(freq, dur, type = 'sine') {
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+}
+
+function sfxCorrect() {
+    playTone(523, 0.1);
+    setTimeout(() => playTone(659, 0.1), 100);
+    setTimeout(() => playTone(784, 0.15), 200);
+}
+
+function sfxWrong() {
+    playTone(250, 0.25, 'sawtooth');
+}
+
+// 全对庆祝音效：一段上行旋律 + 和弦
+function sfxCelebrate() {
+    const notes = [523, 587, 659, 698, 784, 880, 988, 1047];
+    notes.forEach((f, i) => {
+        setTimeout(() => playTone(f, 0.15, 'sine'), i * 120);
+    });
+    // 尾音和弦
+    setTimeout(() => {
+        playTone(1047, 0.6);
+        playTone(784, 0.6);
+        playTone(523, 0.6);
+    }, notes.length * 120 + 50);
+}
+
+// ===== 彩带 =====
+function launchConfetti() {
+    const colors = ['#ff6b6b','#feca57','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#01a3a4','#f368e0'];
+    for (let i = 0; i < 60; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.top = -10 + 'px';
+        c.style.background = colors[Math.floor(Math.random() * colors.length)];
+        c.style.width = (6 + Math.random() * 8) + 'px';
+        c.style.height = (6 + Math.random() * 8) + 'px';
+        c.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
+        c.style.animationDelay = Math.random() * 0.8 + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 3000);
+    }
+}
+
+// ===== 游戏状态 =====
+let roundChars = [];
+let currentIdx = 0;
+let results = []; // {char, correct}
+
+function startTest() {
+    roundChars = shuffle(ALL_CHARS).slice(0, ROUND_SIZE);
+    currentIdx = 0;
+    results = [];
+    hide('startScreen');
+    hide('resultScreen');
+    show('testScreen');
+    showChar();
+}
+
+function showChar() {
+    const ch = roundChars[currentIdx];
+    document.getElementById('charDisplay').textContent = ch;
+    document.getElementById('progressText').textContent = `第 ${currentIdx + 1} / ${ROUND_SIZE} 字`;
+    document.getElementById('progressFill').style.width = (currentIdx / ROUND_SIZE * 100) + '%';
+    document.getElementById('charHint').textContent = '请让孩子认读这个字';
+}
+
+function mark(correct) {
+    const ch = roundChars[currentIdx];
+    results.push({ char: ch, correct });
+    if (correct) sfxCorrect(); else sfxWrong();
+
+    currentIdx++;
+    if (currentIdx >= ROUND_SIZE) {
+        showResult();
+    } else {
+        showChar();
+    }
+}
+
+function showResult() {
+    hide('testScreen');
+    show('resultScreen');
+
+    const correctCount = results.filter(r => r.correct).length;
+    document.getElementById('scoreBig').textContent = `${correctCount} / ${ROUND_SIZE}`;
+
+    // 星星
+    const starCount = correctCount === ROUND_SIZE ? 5
+        : correctCount >= 8 ? 4
+        : correctCount >= 6 ? 3
+        : correctCount >= 4 ? 2 : 1;
+    document.getElementById('starsRow').textContent = '⭐'.repeat(starCount) + '☆'.repeat(5 - starCount);
+
+    // emoji & title
+    const emojiEl = document.getElementById('resultEmoji');
+    const titleEl = document.getElementById('resultTitle');
+    if (correctCount === ROUND_SIZE) {
+        emojiEl.textContent = '🏆';
+        emojiEl.classList.add('trophy-bounce');
+        titleEl.innerHTML = '<h1 style="color:#f9ca24">全部认识！太厉害了！</h1>';
+    } else if (correctCount >= 8) {
+        emojiEl.textContent = '🎉';
+        emojiEl.classList.remove('trophy-bounce');
+        titleEl.innerHTML = '<h1>非常棒！</h1>';
+    } else if (correctCount >= 6) {
+        emojiEl.textContent = '😊';
+        emojiEl.classList.remove('trophy-bounce');
+        titleEl.innerHTML = '<h1>继续加油！</h1>';
+    } else {
+        emojiEl.textContent = '💪';
+        emojiEl.classList.remove('trophy-bounce');
+        titleEl.innerHTML = '<h1>多多练习就会了！</h1>';
+    }
+
+    // 详情列表
+    const listEl = document.getElementById('resultList');
+    listEl.innerHTML = results.map(r =>
+        `<div class="result-item">
+            <span class="r-char">${r.char}</span>
+            <span>${r.correct ? '' : '不认识'}</span>
+            <span class="r-status">${r.correct ? '✅' : '❌'}</span>
+        </div>`
+    ).join('');
+
+    // 全对：庆祝音效 + 彩带
+    if (correctCount === ROUND_SIZE) {
+        setTimeout(() => {
+            sfxCelebrate();
+            launchConfetti();
+        }, 300);
+    }
+}
+
+function backHome() {
+    hide('resultScreen');
+    hide('testScreen');
+    show('startScreen');
+}
+</script>
+
+</body>
+</html>
