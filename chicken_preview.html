@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+body { margin: 20px; background: #f5f5f5; font-family: sans-serif; text-align: center; }
+h3 { color: #333; margin-bottom: 10px; }
+canvas { border: 2px solid #ddd; border-radius: 16px; background: #f0f8ff; }
+</style>
+</head>
+<body>
+<h3>鸡 字插画预览</h3>
+<canvas id="cv" width="200" height="180"></canvas>
+<script>
+const c = document.getElementById('cv').getContext('2d');
+
+function _face(c,x,y,r,skin='#ffd93d',eyeColor='#2d3436'){
+    c.fillStyle=skin;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
+    c.fillStyle=eyeColor;c.beginPath();c.arc(x-r*.3,y-r*.15,r*.09,0,Math.PI*2);c.fill();
+    c.beginPath();c.arc(x+r*.3,y-r*.15,r*.09,0,Math.PI*2);c.fill();
+    c.strokeStyle=eyeColor;c.lineWidth=Math.max(1.5,r*.06);c.beginPath();c.arc(x,y+r*.1,r*.28,.1*Math.PI,.9*Math.PI);c.stroke();
+    c.fillStyle='rgba(255,140,140,.35)';c.beginPath();c.arc(x-r*.5,y+r*.2,r*.13,0,Math.PI*2);c.fill();
+    c.beginPath();c.arc(x+r*.5,y+r*.2,r*.13,0,Math.PI*2);c.fill();
+}
+
+// 鸡
+_face(c,100,65,35,'#ffd93d');
+c.fillStyle='#e17055';c.beginPath();c.moveTo(135,60);c.lineTo(155,55);c.lineTo(135,70);c.fill();
+c.fillStyle='#e17055';c.beginPath();c.arc(100,105,22,0,Math.PI*2);c.fill();
+c.fillStyle='#e17055';c.beginPath();c.arc(88,118,5,0,Math.PI*2);c.fill();
+c.beginPath();c.arc(112,118,5,0,Math.PI*2);c.fill();
+c.fillStyle='#f39c12';c.beginPath();c.moveTo(75,65);c.lineTo(55,55);c.lineTo(70,75);c.fill();
+c.beginPath();c.moveTo(125,65);c.lineTo(145,55);c.lineTo(130,75);c.fill();
+</script>
+</body></html>
