@@ -722,7 +722,7 @@ function speakTip() {
             partsHTML += `<div class="part-card" data-pi="${i}">${p}</div>`;
         });
         partsHTML += '</div>';
-        animArea.innerHTML = partsHTML;
+        animArea.insertAdjacentHTML('beforeend', partsHTML);
 
         // 逐个弹出部件卡片
         const cards = animArea.querySelectorAll('.part-card');
@@ -770,7 +770,7 @@ function speakTip() {
             textHTML += `<span class="word${isPartChar ? ' part-keyword' : ''}" data-i="${i}">${c}</span>`;
         }
         textHTML += '</div>';
-        animArea.innerHTML += textHTML;
+        animArea.insertAdjacentHTML('beforeend', textHTML);
 
         // 逐字高亮
         const spans = animArea.querySelectorAll('.hint-text-anim .word');
