@@ -617,7 +617,6 @@ function handleFindClick(cell, item) {
         lives--;
         updateHUD();
         setTimeout(() => cell.classList.remove('wrong'), 400);
-        if (lives <= 0) setTimeout(() => endGame(), 600);
     }
 }
 
@@ -703,7 +702,6 @@ function handleMatchClick(cell) {
         updateHUD();
         setTimeout(() => { first.classList.remove('wrong-match'); second.classList.remove('wrong-match'); }, 400);
         matchState.selected = null;
-        if (lives <= 0) setTimeout(() => endGame(), 600);
     }
 }
 
@@ -746,7 +744,6 @@ function handleQuizClick(cell, item) {
         lives--;
         updateHUD();
         setTimeout(() => cell.classList.remove('wrong'), 400);
-        if (lives <= 0) setTimeout(() => endGame(), 600);
     }
 }
 
