@@ -137,11 +137,10 @@
             margin-bottom: 10px;
             transition: min-height 0.3s;
         }
-        .hint-anim-area.active { min-height: 360px; }
+        .hint-anim-area.active { min-height: 200px; display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 12px; flex-wrap: wrap; }
 
         .hint-canvas {
             display: block;
-            margin: 0 auto;
             border-radius: 16px;
             background: #f0f8ff;
             border: 2px solid #dfe6e9;
@@ -149,8 +148,8 @@
         .hint-canvas-wrap {
             display: flex;
             justify-content: center;
-            margin-bottom: 10px;
             animation: canvasPop 0.5s cubic-bezier(.34,1.56,.64,1);
+            flex-shrink: 0;
         }
         @keyframes canvasPop {
             0% { transform: scale(0); opacity: 0; }
@@ -159,11 +158,12 @@
 
         .parts-row {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 10px;
-            margin: 10px 0 14px;
-            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0;
+            flex-wrap: nowrap;
         }
         .part-card {
             width: 68px;
@@ -757,39 +757,7 @@ function speakTip() {
         }, highlightStart + parts.length * perPartDuration));
     }
 
-    // 2. 构建文字提示（部件卡片下方）
-    const textDelay = parts.length > 0 ? parts.length * 400 + 300 : 200;
-    hintTimers.push(setTimeout(() => {
-        // 找到部件文字在 tip 中的位置，用于高亮
-        const allPartChars = parts.map(p => p.split('')).flat();
-
-        let textHTML = '<div class="hint-text-anim" id="hintTextAnim">';
-        for (let i = 0; i < tip.length; i++) {
-            const c = tip[i];
-            const isPartChar = allPartChars.includes(c);
-            textHTML += `<span class="word${isPartChar ? ' part-keyword' : ''}" data-i="${i}">${c}</span>`;
-        }
-        textHTML += '</div>';
-        animArea.insertAdjacentHTML('beforeend', textHTML);
-
-        // 逐字高亮
-        const spans = animArea.querySelectorAll('.hint-text-anim .word');
-        let idx = 0;
-        const charInterval = Math.max(90, tip.length > 30 ? 90 : 110);
-        const textTimer = setInterval(() => {
-            if (idx > 0 && spans[idx - 1]) {
-                spans[idx - 1].classList.remove('hl');
-                spans[idx - 1].classList.add('past');
-            }
-            if (idx < spans.length) {
-                spans[idx].classList.add('hl');
-                idx++;
-            } else {
-                clearInterval(textTimer);
-            }
-        }, charInterval);
-        hintTimers.push({ clear: () => clearInterval(textTimer) });
-    }, textDelay));
+    // 2. 文字提示已隐藏，仅保留语音播报
 
     // 3. 语音
     const utter = new SpeechSynthesisUtterance(tip);
