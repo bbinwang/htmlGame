@@ -6,37 +6,48 @@
     <title>笔画动画 — 我</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { height: 100%; }
         body {
             font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
             background: linear-gradient(135deg, #2c3e50 0%, #4a6741 100%);
-            min-height: 100vh;
+            min-height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: clamp(8px, 2vmin, 24px);
+            user-select: none;
+            -webkit-user-select: none;
         }
         .card {
             background: #fff;
-            border-radius: 24px;
-            padding: 36px;
+            border-radius: clamp(12px, 2.5vmin, 24px);
+            padding: clamp(16px, 3vmin, 40px);
             width: 100%;
-            max-width: 500px;
+            max-width: 540px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
             text-align: center;
         }
-        h1 { color: #2d3436; font-size: 1.6em; margin-bottom: 4px; }
-        .subtitle { color: #636e72; font-size: 0.95em; margin-bottom: 20px; }
+        h1 { color: #2d3436; font-size: clamp(1.1em, 3.5vmin, 1.6em); margin-bottom: 2px; }
+        .subtitle { color: #636e72; font-size: clamp(0.8em, 2.2vmin, 0.95em); margin-bottom: clamp(8px, 2vmin, 20px); }
 
-        /* SVG 展示区 — 宣纸风格 */
+        /* 内容区：竖屏纵向排列，横屏左右排列 */
+        .card-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* SVG 展示区 — 宣纸风格，自适应大小 */
         .svg-wrap {
             position: relative;
-            width: 340px;
-            height: 340px;
-            margin: 0 auto 16px;
+            width: min(68vmin, 380px);
+            height: min(68vmin, 380px);
+            margin: 0 auto clamp(8px, 2vmin, 16px);
             border-radius: 4px;
             border: 3px solid #8b7355;
             overflow: hidden;
+            flex-shrink: 0;
             background:
                 radial-gradient(ellipse at 20% 50%, rgba(210,190,160,0.15) 0%, transparent 50%),
                 radial-gradient(ellipse at 80% 50%, rgba(180,160,130,0.1) 0%, transparent 50%),
@@ -44,12 +55,22 @@
         }
         .svg-wrap svg { width: 100%; height: 100%; }
 
+        /* 右侧信息面板（横屏时） */
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            min-width: 0;
+        }
+
         /* 笔画信息 */
         .stroke-info {
-            font-size: 1.1em;
+            font-size: clamp(0.9em, 2.5vmin, 1.1em);
             color: #636e72;
             min-height: 1.6em;
-            margin-bottom: 16px;
+            margin-bottom: clamp(8px, 2vmin, 16px);
             transition: color 0.3s;
         }
         .stroke-info .name { font-weight: bold; color: #e17055; }
@@ -58,18 +79,18 @@
         .stroke-dots {
             display: flex;
             justify-content: center;
-            gap: 8px;
-            margin-bottom: 20px;
+            gap: clamp(4px, 1.2vmin, 8px);
+            margin-bottom: clamp(10px, 2.5vmin, 20px);
         }
         .stroke-dot {
-            width: 28px;
-            height: 28px;
+            width: clamp(24px, 5.5vmin, 32px);
+            height: clamp(24px, 5.5vmin, 32px);
             border-radius: 50%;
             background: #eee;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7em;
+            font-size: clamp(0.6em, 1.5vmin, 0.7em);
             font-weight: bold;
             color: #999;
             transition: all 0.3s;
@@ -81,23 +102,81 @@
         .stroke-dot.done { color: #fff; }
 
         /* 按钮 */
-        .btn-row { display: flex; justify-content: center; gap: 12px; }
+        .btn-row { display: flex; justify-content: center; gap: clamp(8px, 2vmin, 14px); }
         .btn {
-            padding: 12px 28px;
+            padding: clamp(10px, 2.5vmin, 14px) clamp(20px, 5vmin, 32px);
             border: none;
-            border-radius: 14px;
-            font-size: 1.05em;
+            border-radius: clamp(10px, 2vmin, 14px);
+            font-size: clamp(0.9em, 2.5vmin, 1.1em);
             font-weight: bold;
             cursor: pointer;
             color: #fff;
             transition: transform 0.15s, box-shadow 0.15s;
         }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
-        .btn:active { transform: scale(0.97); }
+        .btn:active { transform: scale(0.95); }
         .btn-play { background: linear-gradient(135deg, #c0392b, #e74c3c); }
         .btn-reset { background: linear-gradient(135deg, #a8a8a8, #888); }
 
-        .hidden { display: none; }
+        /* ===== 横屏：左右布局 ===== */
+        @media (orientation: landscape) and (min-width: 640px) {
+            .card {
+                max-width: 900px;
+            }
+            .card-inner {
+                flex-direction: row;
+                align-items: center;
+                gap: clamp(16px, 4vmin, 36px);
+            }
+            .svg-wrap {
+                width: min(50vmin, 400px);
+                height: min(50vmin, 400px);
+                margin: 0;
+            }
+            .info-panel {
+                align-items: flex-start;
+                text-align: left;
+            }
+            .stroke-dots {
+                justify-content: flex-start;
+            }
+            .btn-row {
+                justify-content: flex-start;
+            }
+        }
+
+        /* ===== 大屏 TV / 投屏 ===== */
+        @media (min-width: 1200px), (min-height: 800px) and (orientation: landscape) {
+            .card {
+                max-width: 1000px;
+                border-radius: 28px;
+                padding: 48px;
+            }
+            .svg-wrap {
+                width: min(42vmin, 480px);
+                height: min(42vmin, 480px);
+            }
+            h1 { font-size: 2em; }
+            .btn { padding: 16px 40px; font-size: 1.2em; }
+        }
+
+        /* ===== 手机竖屏小屏 ===== */
+        @media (max-width: 400px) {
+            .card {
+                border-radius: 16px;
+                padding: 16px;
+            }
+            .svg-wrap {
+                border-width: 2px;
+            }
+        }
+
+        /* 安全区域适配（刘海屏等） */
+        @supports (padding: env(safe-area-inset-bottom)) {
+            body {
+                padding-bottom: calc(clamp(8px, 2vmin, 24px) + env(safe-area-inset-bottom));
+            }
+        }
     </style>
 </head>
 <body>
@@ -106,36 +185,40 @@
     <h1>🖌️ 毛笔字 · 笔画动画</h1>
     <p class="subtitle">汉字 "我" — 共 7 笔，按正确笔顺书写</p>
 
-    <div class="svg-wrap">
-        <svg id="strokeSvg" viewBox="-10 -10 1044 1044">
-            <defs>
-                <!-- 毛笔效果：粗糙边缘模拟墨迹 -->
-                <filter id="brushEffect" x="-5%" y="-5%" width="110%" height="110%">
-                    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed="3" result="noise"/>
-                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>
-                </filter>
-            </defs>
-            <!-- 米字格 -->
-            <g opacity="0.2">
-                <rect x="0" y="0" width="1024" height="1024" fill="none" stroke="#8b7355" stroke-width="3"/>
-                <line x1="512" y1="0" x2="512" y2="1024" stroke="#8b7355" stroke-width="1" stroke-dasharray="8,6"/>
-                <line x1="0" y1="512" x2="1024" y2="512" stroke="#8b7355" stroke-width="1" stroke-dasharray="8,6"/>
-                <line x1="0" y1="0" x2="1024" y2="1024" stroke="#8b7355" stroke-width="0.8" stroke-dasharray="6,8"/>
-                <line x1="1024" y1="0" x2="0" y2="1024" stroke="#8b7355" stroke-width="0.8" stroke-dasharray="6,8"/>
-            </g>
-            <!-- 笔画：Y 轴翻转修正 makemeahanzi 坐标系 -->
-            <g id="strokeGroup" transform="translate(0, 1024) scale(1, -1)" filter="url(#brushEffect)">
-            </g>
-        </svg>
-    </div>
+    <div class="card-inner">
+        <div class="svg-wrap">
+            <svg id="strokeSvg" viewBox="-10 -10 1044 1044">
+                <defs>
+                    <!-- 毛笔效果：粗糙边缘模拟墨迹 -->
+                    <filter id="brushEffect" x="-5%" y="-5%" width="110%" height="110%">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed="3" result="noise"/>
+                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+                    </filter>
+                </defs>
+                <!-- 米字格 -->
+                <g opacity="0.2">
+                    <rect x="0" y="0" width="1024" height="1024" fill="none" stroke="#8b7355" stroke-width="3"/>
+                    <line x1="512" y1="0" x2="512" y2="1024" stroke="#8b7355" stroke-width="1" stroke-dasharray="8,6"/>
+                    <line x1="0" y1="512" x2="1024" y2="512" stroke="#8b7355" stroke-width="1" stroke-dasharray="8,6"/>
+                    <line x1="0" y1="0" x2="1024" y2="1024" stroke="#8b7355" stroke-width="0.8" stroke-dasharray="6,8"/>
+                    <line x1="1024" y1="0" x2="0" y2="1024" stroke="#8b7355" stroke-width="0.8" stroke-dasharray="6,8"/>
+                </g>
+                <!-- 笔画：Y 轴翻转修正 makemeahanzi 坐标系 -->
+                <g id="strokeGroup" transform="translate(0, 1024) scale(1, -1)" filter="url(#brushEffect)">
+                </g>
+            </svg>
+        </div>
 
-    <div class="stroke-info" id="strokeInfo">点击「播放」开始动画</div>
+        <div class="info-panel">
+            <div class="stroke-info" id="strokeInfo">点击「播放」开始动画</div>
 
-    <div class="stroke-dots" id="strokeDots"></div>
+            <div class="stroke-dots" id="strokeDots"></div>
 
-    <div class="btn-row">
-        <button class="btn btn-play" id="playBtn" onclick="playAnimation()">▶ 播放</button>
-        <button class="btn btn-reset" onclick="resetAnimation()">↺ 重置</button>
+            <div class="btn-row">
+                <button class="btn btn-play" id="playBtn" onclick="playAnimation()">▶ 播放</button>
+                <button class="btn btn-reset" onclick="resetAnimation()">↺ 重置</button>
+            </div>
+        </div>
     </div>
 </div>
 
