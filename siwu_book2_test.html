@@ -265,6 +265,71 @@
         .btn-pass { background: linear-gradient(135deg, #43e97b, #38f9d7); }
         .btn-fail { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
 
+        /* ===== 横屏切换按钮 ===== */
+        .test-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .btn-landscape {
+            background: #f0f0f5;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 6px 14px;
+            font-size: 0.85em;
+            font-weight: bold;
+            cursor: pointer;
+            color: #636e72;
+            transition: all 0.2s;
+        }
+        .btn-landscape:hover { background: #e8e8ed; }
+        .btn-landscape.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border-color: #667eea;
+        }
+
+        /* ===== 测试区布局 ===== */
+        .test-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .char-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .controls-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* ===== 横屏模式 ===== */
+        .card.landscape { max-width: 860px; }
+        .card.landscape #testScreen .test-body {
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 28px;
+        }
+        .card.landscape .char-area {
+            flex: 0 0 auto;
+            min-width: 180px;
+            padding: 10px 20px;
+        }
+        .card.landscape .char-display { font-size: 9em; margin: 0; }
+        .card.landscape .char-hint { margin-bottom: 0; }
+        .card.landscape .controls-area {
+            flex: 1;
+            align-items: stretch;
+            text-align: center;
+        }
+        .card.landscape .btn-group { justify-content: center; }
+        .card.landscape .btn-hint { display: block; width: 100%; }
+
         .result-list {
             text-align: left;
             margin: 16px 0;
@@ -356,15 +421,24 @@
 
     <!-- ===== 测试页 ===== -->
     <div id="testScreen" class="hidden">
-        <div class="progress-text" id="progressText">第 1 / 10 字</div>
+        <div class="test-toolbar">
+            <div class="progress-text" id="progressText">第 1 / 10 字</div>
+            <button class="btn-landscape" onclick="toggleLandscape()">🔄 横屏</button>
+        </div>
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <div class="char-display" id="charDisplay">人</div>
-        <div class="char-hint" id="charHint">请让孩子认读这个字</div>
-        <div class="hint-anim-area" id="hintAnimArea"></div>
-        <button class="btn-hint" id="hintBtn" onclick="speakTip()">💡 教我怎么记</button>
-        <div class="btn-group">
-            <button class="btn btn-pass" onclick="mark(true)">✅ 认识</button>
-            <button class="btn btn-fail" onclick="mark(false)">❌ 不认识</button>
+        <div class="test-body">
+            <div class="char-area">
+                <div class="char-display" id="charDisplay">人</div>
+                <div class="char-hint" id="charHint">请让孩子认读这个字</div>
+            </div>
+            <div class="controls-area">
+                <div class="hint-anim-area" id="hintAnimArea"></div>
+                <button class="btn-hint" id="hintBtn" onclick="speakTip()">💡 教我怎么记</button>
+                <div class="btn-group">
+                    <button class="btn btn-pass" onclick="mark(true)">✅ 认识</button>
+                    <button class="btn btn-fail" onclick="mark(false)">❌ 不认识</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -969,7 +1043,19 @@ function showResult() {
     }
 }
 
+function toggleLandscape() {
+    const card = document.querySelector('.card');
+    const btn = document.querySelector('.btn-landscape');
+    card.classList.toggle('landscape');
+    btn.classList.toggle('active');
+    btn.textContent = card.classList.contains('landscape') ? '📱 竖屏' : '🔄 横屏';
+}
+
 function backHome() {
+    // 退出横屏模式
+    document.querySelector('.card').classList.remove('landscape');
+    const lb = document.querySelector('.btn-landscape');
+    if (lb) { lb.classList.remove('active'); lb.textContent = '🔄 横屏'; }
     hide('resultScreen');
     hide('testScreen');
     show('startScreen');
