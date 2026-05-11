@@ -142,7 +142,6 @@
 <script>
 // ===== "我" 字笔画数据 =====
 // 数据来源: makemeahanzi (github.com/skishore/makemeahanzi)
-// 每笔是闭合轮廓，用 fill 渲染为实心，用 mask 逐笔揭开
 const STROKES = [
     { name: '撇',  color: '#e74c3c', d: 'M 350 571 Q 380 593 449 614 Q 465 615 468 623 Q 471 633 458 643 Q 439 656 396 668 Q 381 674 370 672 Q 363 668 363 657 Q 364 621 200 527 Q 196 518 201 516 Q 213 516 290 546 Q 303 550 316 556 L 350 571 Z' },
     { name: '横',  color: '#e67e22', d: 'M 584 466 Q 666 485 734 497 Q 746 496 754 511 Q 755 524 729 533 Q 693 554 622 527 Q 598 520 575 511 L 537 499 Q 518 495 500 488 Q 442 472 386 457 L 337 446 Q 327 446 179 416 Q 148 409 173 392 Q 212 365 241 376 Q 287 389 339 404 L 387 416 Q 460 438 545 457 L 584 466 Z' },
@@ -153,39 +152,49 @@ const STROKES = [
     { name: '点',  color: '#1abc9c', d: 'M 687 669 Q 718 648 754 623 Q 770 613 786 615 Q 798 618 801 632 Q 802 648 789 678 Q 780 697 746 708 Q 665 726 651 715 Q 647 711 651 697 Q 655 687 687 669 Z' }
 ];
 
-// ===== 初始化 =====
+// 笔画揭示方向：从起笔到收笔的自然方向
+const DIRECTIONS = [
+    'top-right',     // 0 撇 — 右上起笔，向左下行笔
+    'left',          // 1 横 — 左起右收
+    'top',           // 2 竖钩 — 上起下收
+    'bottom-left',   // 3 提 — 左下起右上收
+    'top-left',      // 4 斜钩 — 左上起右下收
+    'top-right',     // 5 撇 — 右上起左下收
+    'top',           // 6 点 — 上起下收
+];
+
 const svg = document.getElementById('strokeSvg');
 const defs = svg.querySelector('defs');
 const group = document.getElementById('strokeGroup');
 const dotsContainer = document.getElementById('strokeDots');
 const strokeInfo = document.getElementById('strokeInfo');
-let maskPaths = [];  // 遮罩中的描边路径（用于动画）
+let paths = [];
+let clips = []; // { el: polygon, dir: direction }
 
-// 为每一笔创建：遮罩（白色描边沿路径逐步展开）+ 实心填充路径
+// 创建实心笔画 + 方向性 clipPath
 STROKES.forEach((s, i) => {
-    // 1) 遮罩：白色粗描边，用 strokeDasharray 动画逐步展开
-    const mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask');
-    mask.id = `mask-${i}`;
-    const maskPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    maskPath.setAttribute('d', s.d);
-    maskPath.setAttribute('fill', 'none');
-    maskPath.setAttribute('stroke', 'white');
-    maskPath.setAttribute('stroke-width', '100');
-    maskPath.setAttribute('stroke-linecap', 'round');
-    maskPath.setAttribute('stroke-linejoin', 'round');
-    mask.appendChild(maskPath);
-    defs.appendChild(mask);
-    maskPaths.push(maskPath);
-
-    // 2) 实心笔画（被遮罩控制显隐）
+    // 实心填充路径
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', s.d);
     path.setAttribute('fill', '#1a1a1a');
     path.setAttribute('stroke', 'none');
-    path.setAttribute('mask', `url(#mask-${i})`);
+    path.style.opacity = '0';
     group.appendChild(path);
+    paths.push(path);
 
-    // 3) 进度点
+    // clipPath 用 objectBoundingBox（0-1 坐标系），不受 group transform 影响
+    const clipEl = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+    clipEl.id = `clip-${i}`;
+    clipEl.setAttribute('clipPathUnits', 'objectBoundingBox');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', calcPoints(DIRECTIONS[i], 0));
+    clipEl.appendChild(poly);
+    defs.appendChild(clipEl);
+
+    path.setAttribute('clip-path', `url(#clip-${i})`);
+    clips.push({ el: poly, dir: DIRECTIONS[i] });
+
+    // 进度点
     const dot = document.createElement('div');
     dot.className = 'stroke-dot';
     dot.textContent = i + 1;
@@ -193,86 +202,91 @@ STROKES.forEach((s, i) => {
     dotsContainer.appendChild(dot);
 });
 
-// ===== 遮罩动画原理 =====
-// 遮罩路径用白色描边，初始 strokeDashoffset = 总长度（完全隐藏）
-// 动画 offset → 0，白色描边逐步覆盖 → 实心笔画被逐步揭示
-function initPaths() {
-    maskPaths.forEach(path => {
-        const len = path.getTotalLength();
-        path.style.strokeDasharray = len;
-        path.style.strokeDashoffset = len;
-    });
+// 计算多边形顶点（0-1 坐标系）
+// t: 0=隐藏 → 1=完全显示
+function calcPoints(dir, t) {
+    const ex = [[0,0],[1,0],[1,1],[0,1]]; // 终点：完整矩形
+    let sx;
+    switch(dir) {
+        case 'left':         sx = [[0,0],[0,0],[0,1],[0,1]]; break;   // 从左到右
+        case 'top':          sx = [[0,0],[1,0],[1,0],[0,0]]; break;   // 从上到下
+        case 'top-right':    sx = [[1,0],[1,0],[1,0],[1,0]]; break;   // 从右上到左下
+        case 'bottom-left':  sx = [[0,1],[0,1],[0,1],[0,1]]; break;   // 从左下到右上
+        case 'top-left':     sx = [[0,0],[0,0],[0,0],[0,0]]; break;   // 从左上到右下
+    }
+    return sx.map((s, j) =>
+        `${(s[0]+(ex[j][0]-s[0])*t).toFixed(4)},${(s[1]+(ex[j][1]-s[1])*t).toFixed(4)}`
+    ).join(' ');
 }
 
 function resetDots() {
     STROKES.forEach((_, i) => {
         const dot = document.getElementById(`dot-${i}`);
-        dot.classList.remove('active', 'done');
+        dot.classList.remove('active','done');
         dot.style.background = '#eee';
         dot.style.color = '#999';
         dot.style.opacity = '1';
     });
 }
 
+let animId = 0;
+
 function resetAnimation() {
-    anime.remove(maskPaths);
-    initPaths();
+    animId++;
+    paths.forEach(p => p.style.opacity = '0');
+    clips.forEach(c => c.el.setAttribute('points', calcPoints(c.dir, 0)));
     resetDots();
     strokeInfo.textContent = '点击「播放」开始动画';
     strokeInfo.style.color = '#636e72';
 }
 
-// ===== 播放动画 =====
-let currentStroke = -1;
-
 function playAnimation() {
     resetAnimation();
+    const myId = ++animId;
     strokeInfo.textContent = '准备书写...';
 
-    const tl = anime.timeline({
-        easing: 'easeInOutSine',
-        duration: 400,
-    });
+    let delay = 200;
 
-    maskPaths.forEach((path, i) => {
-        const len = path.getTotalLength();
+    paths.forEach((path, i) => {
+        const dur = 350 + i * 20;
+        setTimeout(() => {
+            if (animId !== myId) return;
 
-        tl.add({
-            targets: path,
-            strokeDashoffset: [len, 0],
-            duration: 300 + len * 0.2,
-            begin: () => {
-                currentStroke = i;
-                strokeInfo.innerHTML = `第 <b>${i + 1}</b> / 7 笔 — <span class="name">${STROKES[i].name}</span>`;
-                strokeInfo.style.color = STROKES[i].color;
+            path.style.opacity = '1';
+            strokeInfo.innerHTML = `第 <b>${i+1}</b> / 7 笔 — <span class="name">${STROKES[i].name}</span>`;
+            strokeInfo.style.color = STROKES[i].color;
 
-                const dot = document.getElementById(`dot-${i}`);
-                dot.classList.add('active');
-                dot.style.background = STROKES[i].color;
-                dot.style.color = '#fff';
+            const dot = document.getElementById(`dot-${i}`);
+            dot.classList.add('active');
+            dot.style.background = STROKES[i].color;
+            dot.style.color = '#fff';
 
-                for (let j = 0; j < i; j++) {
-                    const prev = document.getElementById(`dot-${j}`);
-                    prev.classList.remove('active');
-                    prev.classList.add('done');
-                    prev.style.background = STROKES[j].color;
-                    prev.style.opacity = '0.6';
-                }
-            },
-            complete: () => {
-                if (i === maskPaths.length - 1) {
+            for (let j = 0; j < i; j++) {
+                const prev = document.getElementById(`dot-${j}`);
+                prev.classList.remove('active');
+                prev.classList.add('done');
+                prev.style.background = STROKES[j].color;
+                prev.style.opacity = '0.6';
+            }
+
+            // requestAnimationFrame 驱动 clip polygon 动画
+            const start = performance.now();
+            (function animate(now) {
+                if (animId !== myId) return;
+                const t = Math.min((now - start) / dur, 1);
+                const e = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOutQuad
+                clips[i].el.setAttribute('points', calcPoints(clips[i].dir, e));
+                if (t < 1) requestAnimationFrame(animate);
+                else if (i === paths.length - 1) {
                     strokeInfo.innerHTML = '✅ 书写完成！共 7 笔';
                     strokeInfo.style.color = '#27ae60';
-                    const lastDot = document.getElementById(`dot-${i}`);
-                    lastDot.classList.remove('active');
-                    lastDot.classList.add('done');
+                    document.getElementById(`dot-${i}`).classList.add('done');
                 }
-            }
-        }, `-=${i === 0 ? 0 : 150}`);
+            })(start);
+        }, delay);
+        delay += dur * 0.75;
     });
 }
-
-initPaths();
 </script>
 
 </body>
