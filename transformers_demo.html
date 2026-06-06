@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformers.js — 浏览器 AI 模型</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: clamp(12px, 3vmin, 24px);
+        }
+        .card {
+            background: #fff;
+            border-radius: clamp(14px, 2.5vmin, 24px);
+            padding: clamp(20px, 4vmin, 40px);
+            width: 100%;
+            max-width: 860px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            font-size: clamp(1.2em, 3.5vmin, 1.8em);
+            color: #2d3436;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            color: #636e72;
+            font-size: clamp(0.8em, 2vmin, 0.95em);
+            margin-bottom: clamp(12px, 3vmin, 24px);
+        }
+
+        /* 控制栏 */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(8px, 2vmin, 14px);
+            align-items: center;
+            margin-bottom: clamp(12px, 3vmin, 20px);
+        }
+        .toolbar label {
+            font-weight: bold;
+            font-size: clamp(0.85em, 2vmin, 0.95em);
+            color: #2d3436;
+        }
+        select {
+            flex: 1;
+            min-width: 160px;
+            padding: 10px 14px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: clamp(0.85em, 2vmin, 1em);
+            font-weight: bold;
+            cursor: pointer;
+            background: #f8f9fa;
+            color: #2d3436;
+            transition: border-color 0.2s;
+        }
+        select:focus { outline: none; border-color: #6c5ce7; }
+
+        .gpu-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: clamp(0.8em, 1.8vmin, 0.9em);
+            color: #636e72;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .gpu-toggle input[type="checkbox"] {
+            width: 18px; height: 18px;
+            accent-color: #6c5ce7;
+            cursor: pointer;
+        }
+
+        /* 主体 */
+        .main-body {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(12px, 3vmin, 20px);
+        }
+        @media (min-width: 640px) and (orientation: landscape) {
+            .main-body {
+                flex-direction: row;
+            }
+        }
+
+        /* 输入区 */
+        .input-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(8px, 2vmin, 14px);
+        }
+        .input-label {
+            font-size: clamp(0.8em, 1.8vmin, 0.9em);
+            font-weight: bold;
+            color: #636e72;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-size: clamp(0.9em, 2vmin, 1em);
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+        textarea:focus { outline: none; border-color: #6c5ce7; }
+
+        /* 结果区 */
+        .result-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .result-box {
+            flex: 1;
+            min-height: 100px;
+            padding: 14px;
+            background: #f8f9fa;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            font-size: clamp(0.9em, 2vmin, 1em);
+            line-height: 1.7;
+            color: #2d3436;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-y: auto;
+            max-height: 320px;
+        }
+        .result-box.empty {
+            color: #b2bec3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* 按钮 */
+        .btn-row {
+            display: flex;
+            gap: clamp(8px, 2vmin, 12px);
+            margin-top: clamp(8px, 2vmin, 14px);
+        }
+        .btn {
+            flex: 1;
+            padding: clamp(10px, 2.5vmin, 14px) clamp(16px, 4vmin, 28px);
+            border: none;
+            border-radius: 12px;
+            font-size: clamp(0.9em, 2.5vmin, 1.1em);
+            font-weight: bold;
+            cursor: pointer;
+            color: #fff;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-run { background: linear-gradient(135deg, #6c5ce7, #a29bfe); }
+        .btn-clear { background: linear-gradient(135deg, #b2bec3, #636e72); }
+
+        /* 加载状态 */
+        .status {
+            text-align: center;
+            font-size: clamp(0.8em, 1.8vmin, 0.9em);
+            color: #636e72;
+            min-height: 1.5em;
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 3px solid #ddd;
+            border-top-color: #6c5ce7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* GPU 不支持提示 */
+        .gpu-warn {
+            font-size: 0.8em;
+            color: #e17055;
+            margin-top: 4px;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>🤗 Transformers.js — 浏览器 AI</h1>
+    <p class="subtitle">在浏览器中直接运行 Hugging Face 模型，数据完全本地处理</p>
+
+    <div class="toolbar">
+        <label for="taskSelect">任务：</label>
+        <select id="taskSelect" onchange="onTaskChange()">
+            <option value="sentiment">🎯 情感分析</option>
+            <option value="text-generation">✍️ 文本生成</option>
+            <option value="translate-zh-en">🌐 中→英翻译</option>
+            <option value="translate-en-zh">🌐 英→中翻译</option>
+            <option value="text-classification">📊 文本分类</option>
+            <option value="question-answering">❓ 问答</option>
+        </select>
+        <label class="gpu-toggle">
+            <input type="checkbox" id="gpuToggle" onchange="checkGPU()">
+            ⚡ WebGPU 加速
+        </label>
+    </div>
+    <div id="gpuWarn" class="gpu-warn hidden"></div>
+
+    <div class="main-body">
+        <div class="input-panel">
+            <div id="inputArea">
+                <div class="input-label" id="inputLabel">输入文本</div>
+                <textarea id="inputText" placeholder="在这里输入文字...">我非常喜欢这个产品，它太棒了！</textarea>
+            </div>
+            <div id="qaArea" class="hidden">
+                <div class="input-label">上下文（Context）</div>
+                <textarea id="contextText" placeholder="输入上下文段落...">The capital of France is Paris. Paris is known for the Eiffel Tower.</textarea>
+                <div class="input-label" style="margin-top:8px;">问题（Question）</div>
+                <textarea id="questionText" placeholder="输入你的问题..." style="min-height:50px;">What is the capital of France?</textarea>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-run" id="runBtn" onclick="runTask()">▶ 运行</button>
+                <button class="btn btn-clear" onclick="clearResult()">清空</button>
+            </div>
+            <div class="status" id="status"></div>
+        </div>
+        <div class="result-panel">
+            <div class="input-label">结果</div>
+            <div class="result-box empty" id="resultBox">选择任务 → 输入内容 → 点击「运行」</div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+
+// 允许本地缓存模型
+env.allowLocalModels = false;
+
+// ===== 任务配置 =====
+const TASKS = {
+    'sentiment': {
+        task: 'sentiment-analysis',
+        model: null,
+        inputLabel: '输入文本（支持中英文）',
+        placeholder: '我非常喜欢这个产品，它太棒了！',
+        defaultInput: '我非常喜欢这个产品，它太棒了！',
+    },
+    'text-generation': {
+        task: 'text-generation',
+        model: 'Xenova/gpt2',
+        inputLabel: '输入提示词（英文）',
+        placeholder: 'Once upon a time',
+        defaultInput: 'Once upon a time, there was a little robot who',
+    },
+    'translate-zh-en': {
+        task: 'translation',
+        model: 'Xenova/opus-mt-zh-en',
+        inputLabel: '输入中文',
+        placeholder: '今天天气很好',
+        defaultInput: '今天天气很好，我想去公园散步。',
+    },
+    'translate-en-zh': {
+        task: 'translation',
+        model: 'Xenova/opus-mt-en-zh',
+        inputLabel: '输入英文',
+        placeholder: 'Hello, how are you?',
+        defaultInput: 'Hello, how are you? I am learning Chinese.',
+    },
+    'text-classification': {
+        task: 'text-classification',
+        model: null,
+        inputLabel: '输入文本',
+        placeholder: 'This movie is absolutely wonderful!',
+        defaultInput: 'This movie is absolutely wonderful! I loved every minute of it.',
+    },
+    'question-answering': {
+        task: 'question-answering',
+        model: null,
+        inputLabel: '',
+        placeholder: '',
+        defaultInput: '',
+    },
+};
+
+// ===== 状态 =====
+let pipelines = {};   // 缓存的 pipeline 实例
+let currentTask = 'sentiment';
+
+// ===== 暴露到全局 =====
+window.onTaskChange = onTaskChange;
+window.runTask = runTask;
+window.clearResult = clearResult;
+window.checkGPU = checkGPU;
+
+// ===== 任务切换 =====
+function onTaskChange() {
+    currentTask = document.getElementById('taskSelect').value;
+    const cfg = TASKS[currentTask];
+    const inputArea = document.getElementById('inputArea');
+    const qaArea = document.getElementById('qaArea');
+
+    if (currentTask === 'question-answering') {
+        inputArea.classList.add('hidden');
+        qaArea.classList.remove('hidden');
+    } else {
+        inputArea.classList.remove('hidden');
+        qaArea.classList.add('hidden');
+        document.getElementById('inputLabel').textContent = cfg.inputLabel;
+        const ta = document.getElementById('inputText');
+        ta.placeholder = cfg.placeholder;
+        ta.value = cfg.defaultInput;
+    }
+}
+
+// ===== GPU 检测 =====
+function checkGPU() {
+    const warn = document.getElementById('gpuWarn');
+    if (document.getElementById('gpuToggle').checked) {
+        if (!navigator.gpu) {
+            warn.textContent = '⚠️ 当前浏览器不支持 WebGPU，将回退到 WASM 模式';
+            warn.classList.remove('hidden');
+        } else {
+            warn.classList.add('hidden');
+        }
+    } else {
+        warn.classList.add('hidden');
+    }
+}
+
+// ===== 获取或创建 pipeline =====
+async function getPipeline(taskKey) {
+    if (pipelines[taskKey]) return pipelines[taskKey];
+
+    const cfg = TASKS[taskKey];
+    const useGPU = document.getElementById('gpuToggle').checked && navigator.gpu;
+    const opts = {};
+    if (useGPU) {
+        opts.device = 'webgpu';
+        opts.dtype = 'fp16';
+    }
+
+    setStatus('spinner', `正在加载模型 ${cfg.model || '(默认)'}，首次会比较慢...`);
+    const pipe = await pipeline(cfg.task, cfg.model, opts);
+    pipelines[taskKey] = pipe;
+    return pipe;
+}
+
+// ===== 运行任务 =====
+async function runTask() {
+    const runBtn = document.getElementById('runBtn');
+    const resultBox = document.getElementById('resultBox');
+    runBtn.disabled = true;
+    resultBox.classList.remove('empty');
+
+    try {
+        const pipe = await getPipeline(currentTask);
+        let output;
+
+        if (currentTask === 'question-answering') {
+            const context = document.getElementById('contextText').value.trim();
+            const question = document.getElementById('questionText').value.trim();
+            if (!context || !question) {
+                resultBox.textContent = '请输入上下文和问题';
+                resultBox.classList.add('empty');
+                return;
+            }
+            setStatus('spinner', '正在推理...');
+            output = await pipe(question, context);
+        } else {
+            const text = document.getElementById('inputText').value.trim();
+            if (!text) {
+                resultBox.textContent = '请输入文本';
+                resultBox.classList.add('empty');
+                return;
+            }
+            setStatus('spinner', '正在推理...');
+
+            if (currentTask === 'text-generation') {
+                output = await pipe(text, { max_new_tokens: 80 });
+            } else {
+                output = await pipe(text);
+            }
+        }
+
+        resultBox.innerHTML = formatOutput(output, currentTask);
+        setStatus('', '✅ 完成');
+    } catch (err) {
+        resultBox.textContent = '❌ 错误：' + err.message;
+        setStatus('', '运行失败');
+        console.error(err);
+    } finally {
+        runBtn.disabled = false;
+    }
+}
+
+// ===== 格式化输出 =====
+function formatOutput(output, task) {
+    if (task === 'sentiment' || task === 'text-classification') {
+        return output.map(o =>
+            `<b>${o.label}</b>  置信度: ${(o.score * 100).toFixed(2)}%`
+        ).join('\n');
+    }
+    if (task === 'text-generation') {
+        return output.map(o =>
+            `<b>生成结果：</b>\n${o.generated_text}`
+        ).join('\n');
+    }
+    if (task.startsWith('translate')) {
+        return output.map(o =>
+            `<b>翻译结果：</b>\n${o.translation_text}`
+        ).join('\n');
+    }
+    if (task === 'question-answering') {
+        return `<b>答案：</b>${output.answer}\n<b>置信度：</b>${(output.score * 100).toFixed(2)}%`;
+    }
+    return JSON.stringify(output, null, 2);
+}
+
+// ===== 工具函数 =====
+function setStatus(type, text) {
+    const el = document.getElementById('status');
+    el.innerHTML = (type === 'spinner' ? '<span class="spinner"></span>' : '') + text;
+}
+
+function clearResult() {
+    const box = document.getElementById('resultBox');
+    box.textContent = '选择任务 → 输入内容 → 点击「运行」';
+    box.classList.add('empty');
+    setStatus('', '');
+}
+
+// 初始化
+onTaskChange();
+</script>
+
+</body>
+</html>
