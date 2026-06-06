@@ -177,7 +177,14 @@
         }
         #debugPanel summary {
             cursor: pointer; color: var(--text-dim); font-size: 0.85em; user-select: none;
+            display: flex; align-items: center; justify-content: space-between;
         }
+        .copy-log-btn {
+            padding: 3px 10px; font-size: 0.8em; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim);
+            cursor: pointer; transition: all 0.15s;
+        }
+        .copy-log-btn:hover { border-color: var(--accent); color: var(--text); }
         .debug-log {
             max-height: 200px; overflow-y: auto; margin-top: 8px;
             font-family: "SF Mono", "Fira Code", monospace; font-size: 0.78em;
@@ -268,7 +275,7 @@
 
     <!-- Debug Log -->
     <details id="debugPanel">
-        <summary>调试日志（点击展开）</summary>
+        <summary>调试日志（点击展开）<button class="copy-log-btn" onclick="event.preventDefault();copyLog()">复制日志</button></summary>
         <div id="debugLog" class="debug-log"></div>
     </details>
 
@@ -362,6 +369,24 @@
         }
         log('info', '页面加载完成，UI 就绪');
 
+        function copyLog() {
+            var lines = document.querySelectorAll('#debugLog .log-line');
+            var text = Array.from(lines).map(function(l) { return l.textContent; }).join('\n');
+            if (!text) { alert('暂无日志'); return; }
+            navigator.clipboard.writeText(text).then(function() {
+                var btn = document.querySelector('.copy-log-btn');
+                btn.textContent = '已复制 ✓';
+                setTimeout(function() { btn.textContent = '复制日志'; }, 1500);
+            }).catch(function() {
+                // fallback
+                var ta = document.createElement('textarea');
+                ta.value = text; document.body.appendChild(ta);
+                ta.select(); document.execCommand('copy');
+                document.body.removeChild(ta);
+                alert('日志已复制');
+            });
+        }
+
         // --- Button handlers (fallback for when module not loaded) ---
         function runInference() {
             if (window._runInference) {
@@ -392,7 +417,7 @@
         // Dynamic import with error handling
         try {
             log('info', '正在加载 Transformers.js 库...');
-            tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3');
+            tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4');
             log('ok', 'Transformers.js 库加载成功');
         } catch (err) {
             log('error', 'Transformers.js 库加载失败: ' + err.message);
