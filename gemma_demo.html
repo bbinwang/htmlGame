@@ -83,11 +83,11 @@
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .preview-item .remove-btn {
-            flex-shrink: 0; width: 18px; height: 18px;
-            background: transparent; border: 1px solid var(--border); border-radius: 4px;
-            color: var(--text-dim); cursor: pointer; font-size: 13px; line-height: 16px; text-align: center;
+            flex-shrink: 0; width: 22px; height: 22px;
+            background: rgba(255,255,255,0.1); border: 1px solid var(--border); border-radius: 6px;
+            color: var(--text); cursor: pointer; font-size: 14px; line-height: 20px; text-align: center;
         }
-        .preview-item .remove-btn:hover { border-color: var(--error); color: var(--error); }
+        .preview-item .remove-btn:hover { border-color: var(--error); color: var(--error); background: rgba(239,68,68,0.15); }
 
         /* Options */
         .options-row {
@@ -302,17 +302,27 @@
         document.getElementById('imageFile').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const url = URL.createObjectURL(file);
-            imageInput = await load_image(url);
             showPreview('image', file.name);
+            try {
+                const url = URL.createObjectURL(file);
+                imageInput = await load_image(url);
+            } catch (err) {
+                removePreview('image');
+                alert('图片加载失败: ' + err.message);
+            }
         });
 
         document.getElementById('audioFile').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const url = URL.createObjectURL(file);
-            audioInput = await read_audio(url, 16000);
             showPreview('audio', file.name);
+            try {
+                const url = URL.createObjectURL(file);
+                audioInput = await read_audio(url, 16000);
+            } catch (err) {
+                removePreview('audio');
+                alert('音频加载失败: ' + err.message);
+            }
         });
 
         function showPreview(type, name) {
