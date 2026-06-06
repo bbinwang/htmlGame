@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemma 4 E2B — 浏览器多模态 AI</title>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --surface: #1a1a2e;
+            --surface2: #222240;
+            --border: #333355;
+            --accent: #7c3aed;
+            --accent-light: #a78bfa;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.5em; }
+        .subtitle { text-align: center; color: var(--text-dim); margin-bottom: 20px; font-size: 0.9em; }
+
+        /* GPU Panel */
+        .gpu-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .gpu-panel h3 { font-size: 0.85em; color: var(--text-dim); margin-bottom: 10px; }
+        .gpu-status {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 8px; font-size: 0.85em;
+            background: var(--surface2); margin-bottom: 6px;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .dot.ok { background: var(--success); }
+        .dot.no { background: var(--error); }
+        .dot.warn { background: var(--warning); }
+        .gpu-info { font-size: 0.75em; color: var(--text-dim); margin-top: 4px; word-break: break-all; }
+
+        /* Mode Tabs */
+        .mode-tabs {
+            display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .mode-tab {
+            flex: 1; min-width: 100px; padding: 10px 16px; text-align: center;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+            cursor: pointer; font-size: 0.9em; transition: all 0.2s; color: var(--text-dim);
+        }
+        .mode-tab:hover { border-color: var(--accent); }
+        .mode-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+        /* Input Area */
+        .input-section { margin-bottom: 16px; }
+        .input-section label { display: block; font-size: 0.85em; color: var(--text-dim); margin-bottom: 6px; }
+        textarea {
+            width: 100%; min-height: 100px; padding: 12px; border-radius: 10px;
+            background: var(--surface); border: 1px solid var(--border); color: var(--text);
+            font-size: 0.95em; resize: vertical; font-family: inherit;
+        }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        input[type="file"] { display: none; }
+        .file-btns { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .file-btn {
+            padding: 8px 16px; background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 8px; cursor: pointer; font-size: 0.85em; color: var(--text-dim);
+            transition: all 0.2s;
+        }
+        .file-btn:hover { border-color: var(--accent); color: var(--text); }
+        .preview-area {
+            display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
+        }
+        .preview-item {
+            position: relative; border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--border); max-width: 120px;
+        }
+        .preview-item img, .preview-item audio { display: block; max-width: 100%; }
+        .preview-item .remove-btn {
+            position: absolute; top: 2px; right: 2px; width: 20px; height: 20px;
+            background: rgba(0,0,0,0.7); border: none; border-radius: 50%;
+            color: #fff; cursor: pointer; font-size: 12px; line-height: 20px; text-align: center;
+        }
+
+        /* Options */
+        .options-row {
+            display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+        }
+        .opt-label { font-size: 0.8em; color: var(--text-dim); }
+        .opt-input {
+            width: 80px; padding: 6px 10px; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+            font-size: 0.85em; text-align: center;
+        }
+        .opt-input:focus { outline: none; border-color: var(--accent); }
+        .toggle-label {
+            display: flex; align-items: center; gap: 6px; font-size: 0.85em;
+            color: var(--text-dim); cursor: pointer;
+        }
+        .toggle-label input { accent-color: var(--accent); }
+
+        /* Buttons */
+        .btn-row { display: flex; gap: 10px; margin-bottom: 16px; }
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 10px; cursor: pointer;
+            font-size: 0.95em; font-weight: 600; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #6d28d9; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-stop { background: var(--error); color: #fff; }
+        .btn-stop:hover { background: #dc2626; }
+
+        /* Progress */
+        .progress-section {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px; margin-bottom: 16px; display: none;
+        }
+        .progress-section.visible { display: block; }
+        .progress-bar-track {
+            width: 100%; height: 8px; background: var(--surface2); border-radius: 4px;
+            overflow: hidden; margin: 8px 0;
+        }
+        .progress-bar-fill {
+            height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            border-radius: 4px; transition: width 0.3s; width: 0%;
+        }
+        .progress-text { font-size: 0.85em; color: var(--text-dim); }
+
+        /* Output */
+        .output-section {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px; margin-bottom: 16px; min-height: 60px;
+        }
+        .output-section h3 { font-size: 0.85em; color: var(--text-dim); margin-bottom: 10px; }
+        .output-text {
+            white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+            font-size: 0.95em;
+        }
+        .output-text .cursor {
+            display: inline-block; width: 2px; height: 1.1em; background: var(--accent);
+            animation: blink 0.8s infinite; vertical-align: text-bottom;
+        }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+        .placeholder { color: var(--text-dim); font-style: italic; }
+
+        /* Model info */
+        .model-info {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px; margin-bottom: 16px; font-size: 0.85em;
+        }
+        .model-info h3 { color: var(--text-dim); margin-bottom: 8px; font-size: 0.85em; }
+        .info-grid {
+            display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;
+        }
+        .info-grid dt { color: var(--text-dim); }
+        .info-grid dd { color: var(--text); }
+
+        /* Back link */
+        .back-link {
+            display: inline-block; margin-top: 20px; color: var(--text-dim);
+            text-decoration: none; font-size: 0.85em;
+        }
+        .back-link:hover { color: var(--accent-light); }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            h1 { font-size: 1.2em; }
+            .mode-tab { padding: 8px 10px; font-size: 0.8em; min-width: 70px; }
+            textarea { min-height: 80px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Gemma 4 E2B 浏览器 AI</h1>
+    <p class="subtitle">多模态推理 · Text / Image / Audio · WebGPU 加速</p>
+
+    <!-- GPU Detection -->
+    <div class="gpu-panel">
+        <h3>硬件检测</h3>
+        <div id="gpu-webgpu" class="gpu-status"><div class="dot warn"></div><span>检测中...</span></div>
+        <div id="gpu-wasm" class="gpu-status"><div class="dot warn"></div><span>检测中...</span></div>
+        <div id="gpu-info" class="gpu-info"></div>
+    </div>
+
+    <!-- Model Info -->
+    <div class="model-info">
+        <h3>模型信息</h3>
+        <dl class="info-grid">
+            <dt>模型</dt><dd>gemma-4-E2B-it-qat-mobile-ONNX</dd>
+            <dt>参数量</dt><dd>2.3B (有效) / 5.1B (含嵌入)</dd>
+            <dt>量化</dt><dd>QAT wNa8o8 (2-bit 解码层)</dd>
+            <dt>模型大小</dt><dd>~2.6 GB</dd>
+            <dt>上下文</dt><dd>128K tokens</dd>
+            <dt>能力</dt><dd>文本 · 图像理解 · 音频转录</dd>
+        </dl>
+    </div>
+
+    <!-- Mode Tabs -->
+    <div class="mode-tabs">
+        <div class="mode-tab active" data-mode="text" onclick="switchMode('text')">💬 文本</div>
+        <div class="mode-tab" data-mode="image" onclick="switchMode('image')">🖼️ 图像</div>
+        <div class="mode-tab" data-mode="audio" onclick="switchMode('audio')">🎤 音频</div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="input-section">
+        <label>输入内容</label>
+        <textarea id="userInput" placeholder="输入你的问题...&#10;例如：用中文解释量子计算的基本原理">Explain what is special about this image in detail.</textarea>
+
+        <div class="file-btns" id="fileBtns">
+            <label class="file-btn" id="imageBtn" style="display:none">📎 选择图片<input type="file" id="imageFile" accept="image/*"></label>
+            <label class="file-btn" id="audioBtn" style="display:none">📎 选择音频<input type="file" id="audioFile" accept="audio/*"></label>
+        </div>
+        <div class="preview-area" id="previewArea"></div>
+    </div>
+
+    <!-- Options -->
+    <div class="options-row">
+        <div>
+            <span class="opt-label">最大 tokens</span>
+            <input type="number" class="opt-input" id="maxTokens" value="512" min="32" max="4096">
+        </div>
+        <label class="toggle-label">
+            <input type="checkbox" id="useWebGPU" checked> WebGPU 加速
+        </label>
+        <label class="toggle-label">
+            <input type="checkbox" id="enableThinking"> 思考模式
+        </label>
+    </div>
+
+    <!-- Buttons -->
+    <div class="btn-row">
+        <button class="btn btn-primary" id="runBtn" onclick="runInference()">🚀 开始推理</button>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopInference()" style="display:none">⏹ 停止</button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section" id="progressSection">
+        <div class="progress-text" id="progressText">准备中...</div>
+        <div class="progress-bar-track"><div class="progress-bar-fill" id="progressBar"></div></div>
+    </div>
+
+    <!-- Output -->
+    <div class="output-section">
+        <h3>输出</h3>
+        <div class="output-text" id="outputText"><span class="placeholder">点击「开始推理」运行模型...</span></div>
+    </div>
+
+    <a href="index.html" class="back-link">← 返回主页</a>
+
+    <script type="module">
+        import {
+            AutoProcessor,
+            Gemma4ForConditionalGeneration,
+            TextStreamer,
+            load_image,
+            read_audio,
+            env,
+        } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+
+        // State
+        let processor = null;
+        let model = null;
+        let isRunning = false;
+        let currentMode = 'text';
+        let imageInput = null;
+        let audioInput = null;
+
+        // Expose to global for onclick handlers
+        window.switchMode = switchMode;
+        window.runInference = runInference;
+        window.stopInference = stopInference;
+        window.removePreview = removePreview;
+
+        // --- GPU Detection ---
+        async function detectGPU() {
+            const webgpuEl = document.getElementById('gpu-webgpu');
+            const wasmEl = document.getElementById('gpu-wasm');
+            const infoEl = document.getElementById('gpu-info');
+
+            // Check WebGPU
+            try {
+                if (!navigator.gpu) throw new Error('navigator.gpu 不可用');
+                const adapter = await navigator.gpu.requestAdapter();
+                if (!adapter) throw new Error('无法获取 GPU adapter');
+                const device = await adapter.requestDevice();
+                const adapterInfo = await adapter.requestAdapterInfo?.() || {};
+                webgpuEl.innerHTML = `<div class="dot ok"></div><span>WebGPU 可用${adapterInfo.device ? ' — ' + adapterInfo.device : ''}</span>`;
+                infoEl.textContent = `GPU: ${adapterInfo.device || 'Unknown'} | Vendor: ${adapterInfo.vendor || 'Unknown'} | Architecture: ${adapterInfo.architecture || 'Unknown'}`;
+                device.destroy();
+            } catch (e) {
+                webgpuEl.innerHTML = `<div class="dot no"></div><span>WebGPU 不可用: ${e.message}</span>`;
+                document.getElementById('useWebGPU').checked = false;
+                document.getElementById('useWebGPU').disabled = true;
+            }
+
+            // Check WASM (always available in browser)
+            wasmEl.innerHTML = `<div class="dot ok"></div><span>WASM 后端可用 (降级模式)</span>`;
+        }
+        detectGPU();
+
+        // --- Mode Switching ---
+        function switchMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+            document.getElementById('imageBtn').style.display = mode === 'image' ? '' : 'none';
+            document.getElementById('audioBtn').style.display = mode === 'audio' ? '' : 'none';
+
+            const ta = document.getElementById('userInput');
+            if (mode === 'text') {
+                ta.placeholder = '输入你的问题...\n例如：用中文解释量子计算的基本原理';
+            } else if (mode === 'image') {
+                ta.placeholder = '输入关于图片的问题...\n例如：描述这张图片的内容';
+            } else {
+                ta.placeholder = '输入关于音频的问题...\n例如：转录这段音频的内容';
+            }
+
+            // Clear previews when switching away
+            if (mode !== 'image') { imageInput = null; }
+            if (mode !== 'audio') { audioInput = null; }
+            document.getElementById('previewArea').innerHTML = '';
+        }
+
+        // --- File Handling ---
+        document.getElementById('imageFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            imageInput = await load_image(url);
+            showPreview('image', url);
+        });
+
+        document.getElementById('audioFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            audioInput = await read_audio(url, 16000);
+            showPreview('audio', url);
+        });
+
+        function showPreview(type, url) {
+            const area = document.getElementById('previewArea');
+            const id = 'preview-' + type;
+            // Remove old preview of same type
+            const old = document.getElementById(id);
+            if (old) old.remove();
+
+            const div = document.createElement('div');
+            div.className = 'preview-item';
+            div.id = id;
+            if (type === 'image') {
+                div.innerHTML = `<img src="${url}" alt="preview"><button class="remove-btn" onclick="removePreview('image')">×</button>`;
+            } else {
+                div.innerHTML = `<audio src="${url}" controls></audio><button class="remove-btn" onclick="removePreview('audio')">×</button>`;
+            }
+            area.appendChild(div);
+        }
+
+        function removePreview(type) {
+            const el = document.getElementById('preview-' + type);
+            if (el) el.remove();
+            if (type === 'image') imageInput = null;
+            if (type === 'audio') audioInput = null;
+            // Reset file input
+            document.getElementById(type + 'File').value = '';
+        }
+
+        // --- Progress ---
+        function showProgress(text, pct) {
+            const sec = document.getElementById('progressSection');
+            sec.classList.add('visible');
+            document.getElementById('progressText').textContent = text;
+            document.getElementById('progressBar').style.width = pct + '%';
+        }
+        function hideProgress() {
+            document.getElementById('progressSection').classList.remove('visible');
+        }
+
+        // --- Load Model ---
+        async function loadModel() {
+            if (model) return;
+            const useGPU = document.getElementById('useWebGPU').checked;
+            const model_id = 'onnx-community/gemma-4-E2B-it-qat-mobile-ONNX';
+
+            showProgress('加载 Processor (tokenizer)...', 5);
+            processor = await AutoProcessor.from_pretrained(model_id);
+
+            showProgress('加载模型 (首次约 2.6 GB)...', 10);
+            model = await Gemma4ForConditionalGeneration.from_pretrained(model_id, {
+                dtype: 'q4f16',
+                device: useGPU ? 'webgpu' : 'wasm',
+                progress_callback: (info) => {
+                    if (info.status === 'progress_total') {
+                        const pct = 10 + Math.round(info.progress * 0.8);
+                        showProgress(`下载模型: ${info.file} (${Math.round(info.progress)}%)`, pct);
+                    } else if (info.status === 'ready') {
+                        showProgress('模型加载完成', 95);
+                    }
+                },
+            });
+            showProgress('模型就绪 ✓', 100);
+            setTimeout(hideProgress, 1000);
+        }
+
+        // --- Inference ---
+        async function runInference() {
+            if (isRunning) return;
+
+            const text = document.getElementById('userInput').value.trim();
+            if (!text) {
+                alert('请输入内容');
+                return;
+            }
+            if (currentMode === 'image' && !imageInput) {
+                alert('请选择一张图片');
+                return;
+            }
+            if (currentMode === 'audio' && !audioInput) {
+                alert('请选择一段音频');
+                return;
+            }
+
+            isRunning = true;
+            document.getElementById('runBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = '';
+            document.getElementById('outputText').innerHTML = '<span class="cursor"></span>';
+
+            try {
+                // Load model if needed
+                await loadModel();
+
+                showProgress('准备输入...', 0);
+
+                // Build messages
+                const content = [];
+                if (imageInput) content.push({ type: 'image' });
+                if (audioInput) content.push({ type: 'audio' });
+                content.push({ type: 'text', text });
+
+                const messages = [{ role: 'user', content }];
+                const enableThinking = document.getElementById('enableThinking').checked;
+
+                const prompt = processor.apply_chat_template(messages, {
+                    enable_thinking: enableThinking,
+                    add_generation_prompt: true,
+                });
+
+                // Prepare inputs
+                const inputs = await processor(prompt, imageInput || null, audioInput || null, {
+                    add_special_tokens: false,
+                });
+
+                showProgress('推理中...', 10);
+                const maxTokens = parseInt(document.getElementById('maxTokens').value) || 512;
+
+                // Streaming output
+                let outputText = '';
+                const streamer = new TextStreamer(processor.tokenizer, {
+                    skip_prompt: true,
+                    skip_special_tokens: false,
+                    callback_function: (token) => {
+                        outputText += token;
+                        document.getElementById('outputText').innerHTML =
+                            escapeHtml(outputText) + '<span class="cursor"></span>';
+                    },
+                });
+
+                const outputs = await model.generate({
+                    ...inputs,
+                    max_new_tokens: maxTokens,
+                    do_sample: false,
+                    streamer,
+                });
+
+                // Final decode
+                const startIdx = inputs.input_ids.dims.at(-1);
+                const decoded = processor.batch_decode(
+                    outputs.slice(null, [startIdx, null]),
+                    { skip_special_tokens: true }
+                );
+
+                document.getElementById('outputText').innerHTML = escapeHtml(decoded[0]);
+                hideProgress();
+
+            } catch (err) {
+                document.getElementById('outputText').innerHTML =
+                    `<span style="color:var(--error)">错误: ${escapeHtml(err.message)}</span>`;
+                hideProgress();
+                console.error(err);
+            } finally {
+                isRunning = false;
+                document.getElementById('runBtn').style.display = '';
+                document.getElementById('stopBtn').style.display = 'none';
+            }
+        }
+
+        function stopInference() {
+            // Note: model.generate doesn't support cancellation easily
+            // But we can reload the page as a last resort
+            if (confirm('强制停止将需要重新加载模型。确定吗？')) {
+                model = null;
+                processor = null;
+                isRunning = false;
+                document.getElementById('runBtn').style.display = '';
+                document.getElementById('stopBtn').style.display = 'none';
+                hideProgress();
+                document.getElementById('outputText').innerHTML = '<span class="placeholder">已停止</span>';
+            }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
