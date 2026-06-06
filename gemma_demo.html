@@ -439,7 +439,12 @@
             log('info', '加载模型 (首次约 2.6 GB)...');
             showProgress('加载模型 (首次约 2.6 GB)...', 10);
             model = await tf.Gemma4ForConditionalGeneration.from_pretrained(model_id, {
-                dtype: 'q4f16',
+                dtype: {
+                    embed_tokens: 'q2f16',
+                    decoder_model_merged: 'q2f16',
+                    vision_encoder: 'fp16',
+                    audio_encoder: 'q2f16',
+                },
                 device: useGPU ? 'webgpu' : 'wasm',
                 progress_callback: function (info) {
                     if (info.status === 'progress_total') {
