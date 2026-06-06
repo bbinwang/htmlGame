@@ -194,6 +194,40 @@
             margin-top: 4px;
         }
 
+        /* GPU 检测面板 */
+        .gpu-panel {
+            background: #f8f9fa;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: clamp(10px, 2.5vmin, 16px);
+            font-size: clamp(0.75em, 1.8vmin, 0.85em);
+            line-height: 1.8;
+            color: #636e72;
+        }
+        .gpu-panel .gp-title {
+            font-weight: bold;
+            color: #2d3436;
+            margin-bottom: 4px;
+        }
+        .gpu-panel .gp-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+        .gpu-panel .gp-label { color: #888; }
+        .gpu-panel .gp-value { font-weight: bold; color: #2d3436; }
+        .gp-badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .gp-badge.ok { background: #d4edda; color: #155724; }
+        .gp-badge.no { background: #f8d7da; color: #721c24; }
+        .gp-badge.warn { background: #fff3cd; color: #856404; }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -217,6 +251,14 @@
             <input type="checkbox" id="gpuToggle" onchange="checkGPU()">
             ⚡ WebGPU 加速
         </label>
+    </div>
+    <div class="gpu-panel" id="gpuPanel">
+        <div class="gp-title">🖥️ GPU 检测</div>
+        <div class="gp-row"><span class="gp-label">WebGPU API</span><span class="gp-value" id="gpApi">检测中...</span></div>
+        <div class="gp-row"><span class="gp-label">GPU 适配器</span><span class="gp-value" id="gpAdapter">—</span></div>
+        <div class="gp-row"><span class="gp-label">设备</span><span class="gp-value" id="gpDevice">—</span></div>
+        <div class="gp-row"><span class="gp-label">fp16 支持</span><span class="gp-value" id="gpFp16">—</span></div>
+        <div class="gp-row"><span class="gp-label">运行模式</span><span class="gp-value" id="gpMode">—</span></div>
     </div>
     <div id="gpuWarn" class="gpu-warn hidden"></div>
 
@@ -306,6 +348,65 @@ window.onTaskChange = onTaskChange;
 window.runTask = runTask;
 window.clearResult = clearResult;
 window.checkGPU = checkGPU;
+
+// ===== GPU 检测 =====
+async function detectGPU() {
+    const api = document.getElementById('gpApi');
+    const adapter = document.getElementById('gpAdapter');
+    const device = document.getElementById('gpDevice');
+    const fp16 = document.getElementById('gpFp16');
+    const mode = document.getElementById('gpMode');
+
+    if (!navigator.gpu) {
+        api.innerHTML = '<span class="gp-badge no">不支持</span>';
+        adapter.textContent = '—';
+        device.textContent = '—';
+        fp16.textContent = '—';
+        mode.innerHTML = '<span class="gp-badge warn">WASM</span>';
+        return;
+    }
+
+    api.innerHTML = '<span class="gp-badge ok">支持</span>';
+
+    try {
+        const adap = await navigator.gpu.requestAdapter();
+        if (!adap) {
+            adapter.innerHTML = '<span class="gp-badge no">无可用适配器</span>';
+            device.textContent = '—';
+            fp16.textContent = '—';
+            mode.innerHTML = '<span class="gp-badge warn">WASM</span>';
+            return;
+        }
+
+        // 适配器信息
+        const info = adap.info || {};
+        const vendor = info.vendor || '未知';
+        const architecture = info.architecture || '未知';
+        adapter.innerHTML = `<span class="gp-badge ok">${vendor} / ${architecture}</span>`;
+
+        // 请求设备检查
+        try {
+            const dev = await adap.requestDevice();
+            if (dev) {
+                device.innerHTML = '<span class="gp-badge ok">可用</span>';
+                dev.destroy();
+            }
+        } catch {
+            device.innerHTML = '<span class="gp-badge no">不可用</span>';
+        }
+
+        // fp16 检测
+        const features = adap.features || [];
+        fp16.innerHTML = features.has('shader-f16')
+            ? '<span class="gp-badge ok">支持</span>'
+            : '<span class="gp-badge no">不支持</span>';
+
+        mode.innerHTML = '<span class="gp-badge ok">WebGPU</span>';
+    } catch (e) {
+        adapter.innerHTML = `<span class="gp-badge no">${e.message}</span>`;
+        mode.innerHTML = '<span class="gp-badge warn">WASM</span>';
+    }
+}
 
 // ===== 任务切换 =====
 function onTaskChange() {
@@ -465,6 +566,7 @@ function clearResult() {
 
 // 初始化
 onTaskChange();
+detectGPU();
 </script>
 
 </body>
