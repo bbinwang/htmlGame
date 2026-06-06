@@ -420,10 +420,17 @@
             log('info', '正在加载 Transformers.js 库...');
             tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4');
             log('ok', 'Transformers.js 库加载成功');
-            // 使用国内镜像，解决 huggingface.co 连接超时问题
+            // 使用国内镜像，失败则降级到原始地址
             tf.env.allowLocalModels = false;
             tf.env.remoteHost = 'https://hf-mirror.com';
-            log('info', '已切换到 hf-mirror.com 镜像');
+            log('info', '尝试 hf-mirror.com 镜像...');
+            try {
+                await tf.AutoProcessor.from_pretrained('onnx-community/gemma-4-E2B-it-qat-mobile-ONNX', { progress_callback: function() {} });
+                log('ok', 'hf-mirror.com 镜像可用');
+            } catch (e) {
+                log('warn', 'hf-mirror.com 不可用 (' + e.message + ')，切换到 huggingface.co');
+                tf.env.remoteHost = 'https://huggingface.co';
+            }
         } catch (err) {
             log('error', 'Transformers.js 库加载失败: ' + err.message);
             log('info', '可能原因: 网络问题或 CDN 被墙，请尝试刷新或使用 VPN');
