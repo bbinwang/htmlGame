@@ -351,7 +351,6 @@ async function getPipeline(taskKey) {
     const opts = {};
     if (useGPU) {
         opts.device = 'webgpu';
-        opts.dtype = 'fp16';
     }
 
     setStatus('spinner', `正在加载模型 ${cfg.model || '(默认)'}，首次会比较慢...`);
