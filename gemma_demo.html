@@ -485,10 +485,24 @@
                 log('ok', 'Processor 加载完成');
 
                 showProgress('加载模型 (首次约 2.6 GB)... [' + hostLabel + ']', 10);
-                model = await loadWithRetry(function () {
-                    return tf.Gemma4ForConditionalGeneration.from_pretrained(model_id, modelOpts);
-                }, '加载模型 [' + hostLabel + ']');
-                log('ok', '模型加载完成');
+                try {
+                    model = await loadWithRetry(function () {
+                        return tf.Gemma4ForConditionalGeneration.from_pretrained(model_id, modelOpts);
+                    }, '加载模型 [' + hostLabel + ']');
+                } catch (gpuErr) {
+                    // WebGPU 不兼容（如 Safari），自动降级到 WASM
+                    if (useGPU && (gpuErr.message.includes('webgpu') || gpuErr.message.includes('WebGPU') || gpuErr.message.includes('backend'))) {
+                        log('warn', 'WebGPU 不兼容: ' + gpuErr.message + '，自动切换到 WASM');
+                        showProgress('WebGPU 不可用，切换 WASM...', 10);
+                        modelOpts.device = 'wasm';
+                        model = await loadWithRetry(function () {
+                            return tf.Gemma4ForConditionalGeneration.from_pretrained(model_id, modelOpts);
+                        }, '加载模型 (WASM) [' + hostLabel + ']');
+                    } else {
+                        throw gpuErr;
+                    }
+                }
+                log('ok', '模型加载完成 (' + modelOpts.device + ')');
 
             } catch (e) {
                 // 10次重试全失败，切换到 huggingface.co
