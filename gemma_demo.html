@@ -72,15 +72,22 @@
             display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
         }
         .preview-item {
-            position: relative; border-radius: 8px; overflow: hidden;
-            border: 1px solid var(--border); max-width: 120px;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 10px; border-radius: 8px;
+            background: var(--surface2); border: 1px solid var(--border);
+            font-size: 0.85em; color: var(--text);
+            max-width: 260px;
         }
-        .preview-item img, .preview-item audio { display: block; max-width: 100%; }
+        .preview-item .file-icon { flex-shrink: 0; }
+        .preview-item .file-name {
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
         .preview-item .remove-btn {
-            position: absolute; top: 2px; right: 2px; width: 20px; height: 20px;
-            background: rgba(0,0,0,0.7); border: none; border-radius: 50%;
-            color: #fff; cursor: pointer; font-size: 12px; line-height: 20px; text-align: center;
+            flex-shrink: 0; width: 18px; height: 18px;
+            background: transparent; border: 1px solid var(--border); border-radius: 4px;
+            color: var(--text-dim); cursor: pointer; font-size: 13px; line-height: 16px; text-align: center;
         }
+        .preview-item .remove-btn:hover { border-color: var(--error); color: var(--error); }
 
         /* Options */
         .options-row {
@@ -297,7 +304,7 @@
             if (!file) return;
             const url = URL.createObjectURL(file);
             imageInput = await load_image(url);
-            showPreview('image', url);
+            showPreview('image', file.name);
         });
 
         document.getElementById('audioFile').addEventListener('change', async (e) => {
@@ -305,24 +312,21 @@
             if (!file) return;
             const url = URL.createObjectURL(file);
             audioInput = await read_audio(url, 16000);
-            showPreview('audio', url);
+            showPreview('audio', file.name);
         });
 
-        function showPreview(type, url) {
+        function showPreview(type, name) {
             const area = document.getElementById('previewArea');
             const id = 'preview-' + type;
             // Remove old preview of same type
             const old = document.getElementById(id);
             if (old) old.remove();
 
+            const icon = type === 'image' ? '🖼️' : '🎤';
             const div = document.createElement('div');
             div.className = 'preview-item';
             div.id = id;
-            if (type === 'image') {
-                div.innerHTML = `<img src="${url}" alt="preview"><button class="remove-btn" onclick="removePreview('image')">×</button>`;
-            } else {
-                div.innerHTML = `<audio src="${url}" controls></audio><button class="remove-btn" onclick="removePreview('audio')">×</button>`;
-            }
+            div.innerHTML = `<span class="file-icon">${icon}</span><span class="file-name" title="${name}">${name}</span><button class="remove-btn" onclick="removePreview('${type}')">×</button>`;
             area.appendChild(div);
         }
 
