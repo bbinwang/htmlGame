@@ -170,6 +170,25 @@
         }
         .back-link:hover { color: var(--accent-light); }
 
+        /* Debug Panel */
+        #debugPanel {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 12px 16px; margin-bottom: 16px; font-size: 0.85em;
+        }
+        #debugPanel summary {
+            cursor: pointer; color: var(--text-dim); font-size: 0.85em; user-select: none;
+        }
+        .debug-log {
+            max-height: 200px; overflow-y: auto; margin-top: 8px;
+            font-family: "SF Mono", "Fira Code", monospace; font-size: 0.78em;
+            background: var(--surface2); border-radius: 8px; padding: 8px;
+        }
+        .log-line { padding: 2px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .log-error { color: var(--error); }
+        .log-warn { color: var(--warning); }
+        .log-info { color: var(--text-dim); }
+        .log-ok { color: var(--success); }
+
         /* Responsive */
         @media (max-width: 600px) {
             body { padding: 12px; }
@@ -247,6 +266,12 @@
         <div class="output-text" id="outputText"><span class="placeholder">点击「开始推理」运行模型...</span></div>
     </div>
 
+    <!-- Debug Log -->
+    <details id="debugPanel">
+        <summary>调试日志（点击展开）</summary>
+        <div id="debugLog" class="debug-log"></div>
+    </details>
+
     <a href="index.html" class="back-link">← 返回主页</a>
 
     <!-- UI logic: no imports needed, runs immediately -->
@@ -323,18 +348,37 @@
         function hideProgress() {
             document.getElementById('progressSection').classList.remove('visible');
         }
+
+        // --- Debug Log ---
+        function log(level, msg) {
+            var el = document.getElementById('debugLog');
+            var time = new Date().toLocaleTimeString();
+            var div = document.createElement('div');
+            div.className = 'log-line log-' + level;
+            div.textContent = '[' + time + '] ' + msg;
+            el.appendChild(div);
+            el.scrollTop = el.scrollHeight;
+            console.log('[' + level + '] ' + msg);
+        }
+        log('info', '页面加载完成，UI 就绪');
+
+        // --- Button handlers (fallback for when module not loaded) ---
+        function runInference() {
+            if (window._runInference) {
+                window._runInference();
+            } else {
+                log('error', '模型库尚未加载完成，请等待或刷新页面');
+                alert('模型库未加载完成，请等待页面加载完毕或刷新重试。\n可以展开下方「调试日志」查看进度。');
+            }
+        }
+        function stopInference() {
+            if (window._stopInference) window._stopInference();
+        }
     </script>
 
     <!-- Model logic: async module, loads transformers from CDN -->
     <script type="module">
-        import {
-            AutoProcessor,
-            Gemma4ForConditionalGeneration,
-            TextStreamer,
-            load_image,
-            read_audio,
-        } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
-
+        let tf = null;
         let processor = null;
         let model = null;
         let isRunning = false;
@@ -345,28 +389,44 @@
             return div.innerHTML;
         }
 
+        // Dynamic import with error handling
+        try {
+            log('info', '正在加载 Transformers.js 库...');
+            tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3');
+            log('ok', 'Transformers.js 库加载成功');
+        } catch (err) {
+            log('error', 'Transformers.js 库加载失败: ' + err.message);
+            log('info', '可能原因: 网络问题或 CDN 被墙，请尝试刷新或使用 VPN');
+        }
+
         // --- Load Model ---
         async function loadModel() {
             if (model) return;
+            if (!tf) throw new Error('Transformers.js 库未加载');
             var useGPU = document.getElementById('useWebGPU').checked;
             var model_id = 'onnx-community/gemma-4-E2B-it-qat-mobile-ONNX';
 
+            log('info', '加载 Processor (tokenizer)...');
             showProgress('加载 Processor (tokenizer)...', 5);
-            processor = await AutoProcessor.from_pretrained(model_id);
+            processor = await tf.AutoProcessor.from_pretrained(model_id);
+            log('ok', 'Processor 加载完成');
 
+            log('info', '加载模型 (首次约 2.6 GB)...');
             showProgress('加载模型 (首次约 2.6 GB)...', 10);
-            model = await Gemma4ForConditionalGeneration.from_pretrained(model_id, {
+            model = await tf.Gemma4ForConditionalGeneration.from_pretrained(model_id, {
                 dtype: 'q4f16',
                 device: useGPU ? 'webgpu' : 'wasm',
                 progress_callback: function (info) {
                     if (info.status === 'progress_total') {
                         var pct = 10 + Math.round(info.progress * 0.8);
                         showProgress('下载模型: ' + info.file + ' (' + Math.round(info.progress) + '%)', pct);
+                        log('info', '下载: ' + info.file + ' ' + Math.round(info.progress) + '%');
                     } else if (info.status === 'ready') {
                         showProgress('模型加载完成', 95);
                     }
                 },
             });
+            log('ok', '模型加载完成');
             showProgress('模型就绪 ✓', 100);
             setTimeout(hideProgress, 1000);
         }
@@ -374,6 +434,11 @@
         // --- Inference ---
         async function runInference() {
             if (isRunning) return;
+            if (!tf) {
+                log('error', 'Transformers.js 未加载，无法推理');
+                alert('模型库未加载成功，请刷新页面重试。');
+                return;
+            }
 
             var text = document.getElementById('userInput').value.trim();
             if (!text) {
@@ -387,19 +452,26 @@
             document.getElementById('outputText').innerHTML = '<span class="cursor"></span>';
 
             try {
+                log('info', '开始推理...');
+
                 // Process file inputs from the UI script
                 var imageInput = null;
                 var audioInput = null;
                 if (window._imageFile) {
-                    imageInput = await load_image(URL.createObjectURL(window._imageFile));
+                    log('info', '加载图片: ' + window._imageFile.name);
+                    imageInput = await tf.load_image(URL.createObjectURL(window._imageFile));
+                    log('ok', '图片加载完成');
                 }
                 if (window._audioFile) {
-                    audioInput = await read_audio(URL.createObjectURL(window._audioFile), 16000);
+                    log('info', '加载音频: ' + window._audioFile.name);
+                    audioInput = await tf.read_audio(URL.createObjectURL(window._audioFile), 16000);
+                    log('ok', '音频加载完成');
                 }
 
                 await loadModel();
 
                 showProgress('准备输入...', 0);
+                log('info', '构建 prompt...');
 
                 var content = [];
                 if (imageInput) content.push({ type: 'image' });
@@ -419,10 +491,11 @@
                 });
 
                 showProgress('推理中...', 10);
+                log('info', '生成中 (max ' + (parseInt(document.getElementById('maxTokens').value) || 512) + ' tokens)...');
                 var maxTokens = parseInt(document.getElementById('maxTokens').value) || 512;
 
                 var outputText = '';
-                var streamer = new TextStreamer(processor.tokenizer, {
+                var streamer = new tf.TextStreamer(processor.tokenizer, {
                     skip_prompt: true,
                     skip_special_tokens: false,
                     callback_function: function (token) {
@@ -447,11 +520,13 @@
 
                 document.getElementById('outputText').innerHTML = escapeHtml(decoded[0]);
                 hideProgress();
+                log('ok', '推理完成，输出 ' + decoded[0].length + ' 字符');
 
             } catch (err) {
                 document.getElementById('outputText').innerHTML =
                     '<span style="color:var(--error)">错误: ' + escapeHtml(err.message) + '</span>';
                 hideProgress();
+                log('error', '推理错误: ' + err.message);
                 console.error(err);
             } finally {
                 isRunning = false;
@@ -469,12 +544,16 @@
                 document.getElementById('stopBtn').style.display = 'none';
                 hideProgress();
                 document.getElementById('outputText').innerHTML = '<span class="placeholder">已停止</span>';
+                log('warn', '推理已强制停止');
             }
         }
 
-        // Expose to global for onclick handlers
+        // Expose to global (override the fallback in plain script)
+        window._runInference = runInference;
+        window._stopInference = stopInference;
         window.runInference = runInference;
         window.stopInference = stopInference;
+        log('ok', '推理引擎就绪，可以开始使用');
     </script>
 </body>
 </html>
