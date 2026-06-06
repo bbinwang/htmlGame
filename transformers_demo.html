@@ -332,10 +332,17 @@ function checkGPU() {
     const warn = document.getElementById('gpuWarn');
     if (document.getElementById('gpuToggle').checked) {
         if (!navigator.gpu) {
-            warn.textContent = '⚠️ 当前浏览器不支持 WebGPU，将回退到 WASM 模式';
+            warn.textContent = '⚠️ 当前浏览器不支持 WebGPU，将使用 WASM 模式运行';
             warn.classList.remove('hidden');
         } else {
-            warn.classList.add('hidden');
+            // 手机端提示
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (isMobile) {
+                warn.textContent = '⚠️ 手机端 WebGPU 支持有限，如遇错误请关闭此开关使用 WASM 模式';
+                warn.classList.remove('hidden');
+            } else {
+                warn.classList.add('hidden');
+            }
         }
     } else {
         warn.classList.add('hidden');
@@ -347,13 +354,26 @@ async function getPipeline(taskKey) {
     if (pipelines[taskKey]) return pipelines[taskKey];
 
     const cfg = TASKS[taskKey];
-    const useGPU = document.getElementById('gpuToggle').checked && navigator.gpu;
+    const gpuChecked = document.getElementById('gpuToggle').checked;
     const opts = {};
-    if (useGPU) {
-        opts.device = 'webgpu';
+
+    // 验证 WebGPU 是否真正可用（手机浏览器可能支持 API 但实际不可用）
+    if (gpuChecked && navigator.gpu) {
+        try {
+            const adapter = await navigator.gpu.requestAdapter();
+            if (adapter) {
+                opts.device = 'webgpu';
+                setStatus('spinner', `正在加载模型 ${cfg.model || '(默认)'}（WebGPU 加速）...`);
+            } else {
+                setStatus('spinner', `WebGPU 不可用，使用 WASM 模式加载模型...`);
+            }
+        } catch {
+            setStatus('spinner', `WebGPU 不可用，使用 WASM 模式加载模型...`);
+        }
+    } else {
+        setStatus('spinner', `正在加载模型 ${cfg.model || '(默认)'}（WASM 模式）...`);
     }
 
-    setStatus('spinner', `正在加载模型 ${cfg.model || '(默认)'}，首次会比较慢...`);
     const pipe = await pipeline(cfg.task, cfg.model, opts);
     pipelines[taskKey] = pipe;
     return pipe;
