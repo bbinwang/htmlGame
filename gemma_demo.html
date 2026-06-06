@@ -51,18 +51,6 @@
         .dot.warn { background: var(--warning); }
         .gpu-info { font-size: 0.75em; color: var(--text-dim); margin-top: 4px; word-break: break-all; }
 
-        /* Mode Tabs */
-        .mode-tabs {
-            display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
-        }
-        .mode-tab {
-            flex: 1; min-width: 100px; padding: 10px 16px; text-align: center;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-            cursor: pointer; font-size: 0.9em; transition: all 0.2s; color: var(--text-dim);
-        }
-        .mode-tab:hover { border-color: var(--accent); }
-        .mode-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
         /* Input Area */
         .input-section { margin-bottom: 16px; }
         .input-section label { display: block; font-size: 0.85em; color: var(--text-dim); margin-bottom: 6px; }
@@ -179,7 +167,6 @@
         @media (max-width: 600px) {
             body { padding: 12px; }
             h1 { font-size: 1.2em; }
-            .mode-tab { padding: 8px 10px; font-size: 0.8em; min-width: 70px; }
             textarea { min-height: 80px; }
         }
     </style>
@@ -209,21 +196,14 @@
         </dl>
     </div>
 
-    <!-- Mode Tabs -->
-    <div class="mode-tabs">
-        <div class="mode-tab active" data-mode="text" onclick="switchMode('text')">💬 文本</div>
-        <div class="mode-tab" data-mode="image" onclick="switchMode('image')">🖼️ 图像</div>
-        <div class="mode-tab" data-mode="audio" onclick="switchMode('audio')">🎤 音频</div>
-    </div>
-
     <!-- Input Section -->
     <div class="input-section">
-        <label>输入内容</label>
-        <textarea id="userInput" placeholder="输入你的问题...&#10;例如：用中文解释量子计算的基本原理">Explain what is special about this image in detail.</textarea>
+        <label>输入问题（文本必填，可选附带图片或音频）</label>
+        <textarea id="userInput" placeholder="输入你的问题...&#10;可以附带图片或音频一起提问&#10;例如：描述这张图片的内容 / 转录这段音频"></textarea>
 
-        <div class="file-btns" id="fileBtns">
-            <label class="file-btn" id="imageBtn" style="display:none">📎 选择图片<input type="file" id="imageFile" accept="image/*"></label>
-            <label class="file-btn" id="audioBtn" style="display:none">📎 选择音频<input type="file" id="audioFile" accept="audio/*"></label>
+        <div class="file-btns">
+            <label class="file-btn">🖼️ 添加图片<input type="file" id="imageFile" accept="image/*"></label>
+            <label class="file-btn">🎤 添加音频<input type="file" id="audioFile" accept="audio/*"></label>
         </div>
         <div class="preview-area" id="previewArea"></div>
     </div>
@@ -276,12 +256,10 @@
         let processor = null;
         let model = null;
         let isRunning = false;
-        let currentMode = 'text';
         let imageInput = null;
         let audioInput = null;
 
         // Expose to global for onclick handlers
-        window.switchMode = switchMode;
         window.runInference = runInference;
         window.stopInference = stopInference;
         window.removePreview = removePreview;
@@ -312,28 +290,6 @@
             wasmEl.innerHTML = `<div class="dot ok"></div><span>WASM 后端可用 (降级模式)</span>`;
         }
         detectGPU();
-
-        // --- Mode Switching ---
-        function switchMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-            document.getElementById('imageBtn').style.display = mode === 'image' ? '' : 'none';
-            document.getElementById('audioBtn').style.display = mode === 'audio' ? '' : 'none';
-
-            const ta = document.getElementById('userInput');
-            if (mode === 'text') {
-                ta.placeholder = '输入你的问题...\n例如：用中文解释量子计算的基本原理';
-            } else if (mode === 'image') {
-                ta.placeholder = '输入关于图片的问题...\n例如：描述这张图片的内容';
-            } else {
-                ta.placeholder = '输入关于音频的问题...\n例如：转录这段音频的内容';
-            }
-
-            // Clear previews when switching away
-            if (mode !== 'image') { imageInput = null; }
-            if (mode !== 'audio') { audioInput = null; }
-            document.getElementById('previewArea').innerHTML = '';
-        }
 
         // --- File Handling ---
         document.getElementById('imageFile').addEventListener('change', async (e) => {
@@ -422,15 +378,7 @@
 
             const text = document.getElementById('userInput').value.trim();
             if (!text) {
-                alert('请输入内容');
-                return;
-            }
-            if (currentMode === 'image' && !imageInput) {
-                alert('请选择一张图片');
-                return;
-            }
-            if (currentMode === 'audio' && !audioInput) {
-                alert('请选择一段音频');
+                alert('请输入问题');
                 return;
             }
 
