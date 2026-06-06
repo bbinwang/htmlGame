@@ -419,6 +419,10 @@
             log('info', '正在加载 Transformers.js 库...');
             tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4');
             log('ok', 'Transformers.js 库加载成功');
+            // 使用国内镜像，解决 huggingface.co 连接超时问题
+            tf.env.allowLocalModels = false;
+            tf.env.remoteHost = 'https://hf-mirror.com';
+            log('info', '已切换到 hf-mirror.com 镜像');
         } catch (err) {
             log('error', 'Transformers.js 库加载失败: ' + err.message);
             log('info', '可能原因: 网络问题或 CDN 被墙，请尝试刷新或使用 VPN');
