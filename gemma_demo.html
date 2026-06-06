@@ -227,6 +227,7 @@
             <dt>上下文</dt><dd>128K tokens</dd>
             <dt>能力</dt><dd>文本 · 图像理解 · 音频转录</dd>
         </dl>
+        <p style="margin-top:10px;color:var(--warning);font-size:0.82em;">⚠️ 模型约 2.6 GB，需要至少 4 GB 可用内存。手机浏览器可能内存不足导致崩溃，建议使用电脑端 Chrome/Edge 运行。</p>
     </div>
 
     <!-- Input Section -->
@@ -453,8 +454,12 @@
                 progress_callback: function (info) {
                     if (info.status === 'progress_total') {
                         var pct = 10 + Math.round(info.progress * 0.8);
-                        showProgress('下载模型: ' + info.file + ' (' + Math.round(info.progress) + '%)', pct);
-                        log('info', '下载: ' + info.file + ' ' + Math.round(info.progress) + '%');
+                        var fname = info.file || info.filename || info.name || '模型文件';
+                        showProgress('下载: ' + fname + ' (' + Math.round(info.progress) + '%)', pct);
+                        log('info', '下载: ' + fname + ' ' + Math.round(info.progress) + '%');
+                    } else if (info.status === 'initiate') {
+                        var fname = info.file || info.filename || info.name || '模型文件';
+                        log('info', '开始下载: ' + fname);
                     } else if (info.status === 'ready') {
                         showProgress('模型加载完成', 95);
                     }
