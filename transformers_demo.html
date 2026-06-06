@@ -194,6 +194,32 @@
             margin-top: 4px;
         }
 
+        /* 模型信息 */
+        .model-info {
+            background: #f0f0ff;
+            border: 2px solid #ddd6fe;
+            border-radius: 10px;
+            padding: 8px 14px;
+            margin-bottom: 10px;
+            font-size: clamp(0.75em, 1.7vmin, 0.85em);
+            color: #6c5ce7;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            align-items: center;
+        }
+        .model-info b { color: #2d3436; }
+        .mi-tag {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .mi-tag.ok { background: #d4edda; color: #155724; }
+        .mi-tag.warn { background: #fff3cd; color: #856404; }
+        .mi-tag.no { background: #f8d7da; color: #721c24; }
+
         /* GPU 检测面板 */
         .gpu-panel {
             background: #f8f9fa;
@@ -252,6 +278,7 @@
             ⚡ WebGPU 加速
         </label>
     </div>
+    <div class="model-info" id="modelInfo"></div>
     <div class="gpu-panel" id="gpuPanel">
         <div class="gp-title">🖥️ GPU 检测</div>
         <div class="gp-row"><span class="gp-label">WebGPU API</span><span class="gp-value" id="gpApi">检测中...</span></div>
@@ -298,6 +325,9 @@ const TASKS = {
     'sentiment': {
         task: 'sentiment-analysis',
         model: null,
+        modelName: 'distilbert-base-uncased-finetuned-sst-2-english',
+        size: '~70 MB',
+        mobile: true,
         inputLabel: '输入文本（支持中英文）',
         placeholder: '我非常喜欢这个产品，它太棒了！',
         defaultInput: '我非常喜欢这个产品，它太棒了！',
@@ -305,6 +335,9 @@ const TASKS = {
     'text-generation': {
         task: 'text-generation',
         model: 'Xenova/gpt2',
+        modelName: 'gpt2',
+        size: '~500 MB',
+        mobile: false,
         inputLabel: '输入提示词（英文）',
         placeholder: 'Once upon a time',
         defaultInput: 'Once upon a time, there was a little robot who',
@@ -312,6 +345,9 @@ const TASKS = {
     'translate-zh-en': {
         task: 'translation',
         model: 'Xenova/opus-mt-zh-en',
+        modelName: 'opus-mt-zh-en',
+        size: '~300 MB',
+        mobile: false,
         inputLabel: '输入中文',
         placeholder: '今天天气很好',
         defaultInput: '今天天气很好，我想去公园散步。',
@@ -319,6 +355,9 @@ const TASKS = {
     'translate-en-zh': {
         task: 'translation',
         model: 'Xenova/opus-mt-en-zh',
+        modelName: 'opus-mt-en-zh',
+        size: '~300 MB',
+        mobile: false,
         inputLabel: '输入英文',
         placeholder: 'Hello, how are you?',
         defaultInput: 'Hello, how are you? I am learning Chinese.',
@@ -326,6 +365,9 @@ const TASKS = {
     'text-classification': {
         task: 'text-classification',
         model: null,
+        modelName: 'distilbert-base-uncased-finetuned-sst-2-english',
+        size: '~70 MB',
+        mobile: true,
         inputLabel: '输入文本',
         placeholder: 'This movie is absolutely wonderful!',
         defaultInput: 'This movie is absolutely wonderful! I loved every minute of it.',
@@ -333,6 +375,9 @@ const TASKS = {
     'question-answering': {
         task: 'question-answering',
         model: null,
+        modelName: 'distilbert-base-cased-distilled-squad',
+        size: '~70 MB',
+        mobile: true,
         inputLabel: '',
         placeholder: '',
         defaultInput: '',
@@ -414,6 +459,13 @@ function onTaskChange() {
     const cfg = TASKS[currentTask];
     const inputArea = document.getElementById('inputArea');
     const qaArea = document.getElementById('qaArea');
+
+    // 显示模型信息
+    const info = document.getElementById('modelInfo');
+    const mobileTag = cfg.mobile
+        ? '<span class="mi-tag ok">手机可跑</span>'
+        : '<span class="mi-tag warn">建议电脑</span>';
+    info.innerHTML = `<b>模型：</b>${cfg.modelName}　<b>大小：</b>${cfg.size}　${mobileTag}`;
 
     if (currentTask === 'question-answering') {
         inputArea.classList.add('hidden');
