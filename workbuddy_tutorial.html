@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从0到1速通 WorkBuddy — 视频教程</title>
+<style>
+:root {
+  --bg: #0f0f1a;
+  --surface: #1a1a2e;
+  --surface2: #222240;
+  --border: #333355;
+  --accent: #7c3aed;
+  --accent-light: #a78bfa;
+  --accent-glow: rgba(124,58,237,0.3);
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: "SF Mono", "Fira Code", "Consolas", monospace;
+  --radius: 12px;
+  --slide-width: 1280px;
+  --slide-height: 720px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: var(--font); }
+
+/* === Deck Container === */
+.deck {
+  width: var(--slide-width); height: var(--slide-height);
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg); color: var(--text);
+  overflow: hidden;
+}
+
+/* === Slide System === */
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 60px 80px;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  transform: translateX(40px);
+}
+.slide.is-active {
+  opacity: 1; visibility: visible;
+  transform: translateX(0);
+}
+.slide.is-exiting {
+  opacity: 0; transform: translateX(-40px);
+}
+
+/* === Typography === */
+.slide-title {
+  font-size: 2.8em; font-weight: 800; margin-bottom: 30px;
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; text-align: center;
+}
+.slide-subtitle {
+  font-size: 1.3em; color: var(--text-dim); margin-bottom: 20px;
+  text-align: center;
+}
+.slide-content { width: 100%; max-width: 1000px; }
+
+/* === Lists === */
+.item-list { list-style: none; }
+.item-list li {
+  font-size: 1.25em; padding: 12px 0 12px 36px;
+  position: relative; line-height: 1.6;
+  opacity: 0; transform: translateY(15px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.item-list li::before {
+  content: ''; position: absolute; left: 0; top: 20px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 12px var(--accent-glow);
+}
+.slide.is-active .item-list li {
+  opacity: 1; transform: translateY(0);
+}
+.slide.is-active .item-list li:nth-child(1) { transition-delay: 0.15s; }
+.slide.is-active .item-list li:nth-child(2) { transition-delay: 0.3s; }
+.slide.is-active .item-list li:nth-child(3) { transition-delay: 0.45s; }
+.slide.is-active .item-list li:nth-child(4) { transition-delay: 0.6s; }
+.slide.is-active .item-list li:nth-child(5) { transition-delay: 0.75s; }
+.slide.is-active .item-list li:nth-child(6) { transition-delay: 0.9s; }
+
+.num-list { list-style: none; counter-reset: numlist; }
+.num-list li {
+  font-size: 1.2em; padding: 10px 0 10px 50px;
+  position: relative; line-height: 1.6;
+  opacity: 0; transform: translateX(-15px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  counter-increment: numlist;
+}
+.num-list li::before {
+  content: counter(numlist);
+  position: absolute; left: 0; top: 8px;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--accent); color: #fff;
+  font-weight: 700; font-size: 0.85em;
+  display: flex; align-items: center; justify-content: center;
+}
+.slide.is-active .num-list li { opacity: 1; transform: translateX(0); }
+.slide.is-active .num-list li:nth-child(1) { transition-delay: 0.15s; }
+.slide.is-active .num-list li:nth-child(2) { transition-delay: 0.3s; }
+.slide.is-active .num-list li:nth-child(3) { transition-delay: 0.45s; }
+.slide.is-active .num-list li:nth-child(4) { transition-delay: 0.6s; }
+.slide.is-active .num-list li:nth-child(5) { transition-delay: 0.75s; }
+.slide.is-active .num-list li:nth-child(6) { transition-delay: 0.9s; }
+.slide.is-active .num-list li:nth-child(7) { transition-delay: 1.05s; }
+
+/* === Cards === */
+.card-row { display: flex; gap: 24px; width: 100%; }
+.card {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 28px;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.slide.is-active .card:nth-child(1) { opacity: 1; transform: translateY(0); transition-delay: 0.2s; }
+.slide.is-active .card:nth-child(2) { opacity: 1; transform: translateY(0); transition-delay: 0.4s; }
+.slide.is-active .card:nth-child(3) { opacity: 1; transform: translateY(0); transition-delay: 0.6s; }
+.card-icon { font-size: 2em; margin-bottom: 12px; }
+.card-title { font-size: 1.15em; font-weight: 700; margin-bottom: 10px; color: var(--accent-light); }
+.card-body { font-size: 0.9em; color: var(--text-dim); line-height: 1.5; }
+
+/* === Steps === */
+.step-flow { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+.step-item {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--surface); border-radius: 10px; padding: 16px 24px;
+  border-left: 4px solid var(--accent);
+  opacity: 0; transform: translateX(-20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.slide.is-active .step-item { opacity: 1; transform: translateX(0); }
+.slide.is-active .step-item:nth-child(1) { transition-delay: 0.2s; }
+.slide.is-active .step-item:nth-child(2) { transition-delay: 0.4s; }
+.slide.is-active .step-item:nth-child(3) { transition-delay: 0.6s; }
+.slide.is-active .step-item:nth-child(4) { transition-delay: 0.8s; }
+.slide.is-active .step-item:nth-child(5) { transition-delay: 1.0s; }
+.step-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-weight: 700; font-size: 0.9em;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.step-text { font-size: 1.05em; }
+
+/* === Alert box === */
+.alert {
+  background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 8px; padding: 12px 20px; margin-top: 20px;
+  font-size: 0.95em; color: var(--warning);
+}
+
+/* === Cover slide === */
+.cover { text-align: center; }
+.cover-title {
+  font-size: 3.2em; font-weight: 900; margin-bottom: 20px;
+  background: linear-gradient(135deg, var(--accent-light), var(--accent), #c084fc);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  opacity: 0; transform: scale(0.9);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.slide.is-active .cover-title { opacity: 1; transform: scale(1); }
+.cover-sub {
+  font-size: 1.4em; color: var(--text-dim); margin-bottom: 40px;
+  opacity: 0; transition: opacity 0.6s ease 0.3s;
+}
+.slide.is-active .cover-sub { opacity: 1; }
+.cover-meta {
+  font-size: 1em; color: var(--text-dim);
+  opacity: 0; transition: opacity 0.6s ease 0.6s;
+}
+.slide.is-active .cover-meta { opacity: 1; }
+
+/* === Thanks slide === */
+.thanks-title {
+  font-size: 4em; font-weight: 900;
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  opacity: 0; transform: scale(0.8);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.slide.is-active .thanks-title { opacity: 1; transform: scale(1); }
+
+/* === Progress bar === */
+.progress-bar {
+  position: absolute; bottom: 0; left: 0;
+  height: 4px; background: var(--accent);
+  transition: width 0.4s ease;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* === Slide number === */
+.slide-counter {
+  position: absolute; top: 20px; right: 30px;
+  font-size: 0.8em; color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+/* === Section tag === */
+.section-tag {
+  display: inline-block; padding: 4px 14px;
+  background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 20px; font-size: 0.8em; color: var(--accent-light);
+  margin-bottom: 16px;
+}
+
+/* === Highlight === */
+.hl { color: var(--accent-light); font-weight: 600; }
+
+/* === Decorative glow === */
+.glow-orb {
+  position: absolute; width: 300px; height: 300px;
+  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+  border-radius: 50%; pointer-events: none; opacity: 0.5;
+}
+
+/* === Auto-play indicator === */
+.autoplay-indicator {
+  position: absolute; bottom: 14px; right: 30px;
+  font-size: 0.7em; color: var(--text-dim); font-family: var(--mono);
+  display: flex; align-items: center; gap: 6px;
+}
+.autoplay-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success); animation: pulse-dot 1.5s infinite;
+}
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- ====== Slide 1: Cover ====== -->
+<section class="slide cover is-active" data-duration="6000">
+  <div class="glow-orb" style="top:-100px;left:-80px;"></div>
+  <div class="glow-orb" style="bottom:-80px;right:-60px;"></div>
+  <div class="cover-title">从0到1带你速通<br>WorkBuddy</div>
+  <div class="cover-sub">国内最适合的 Agent 产品 · 完整教程</div>
+  <div class="cover-meta">作者：数字生命卡兹克 ｜ 2026年6月</div>
+</section>
+
+<!-- ====== Slide 2: Why WorkBuddy ====== -->
+<section class="slide" data-duration="7000">
+  <div class="section-tag">开篇</div>
+  <div class="slide-title">为什么是 WorkBuddy？</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>Claude Code、Codex 很强，但<span class="hl">国内用不了</span></li>
+      <li>大家日常办公需求是<span class="hl">实实在在</span>的</li>
+      <li>WorkBuddy：国内口碑最好的<span class="hl">通用 Agent 产品</span></li>
+      <li>Windows 和 Mac <span class="hl">同等体验</span></li>
+      <li>覆盖日常办公 <span class="hl">70-80%</span> 需求</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 3: Outline ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">导航</div>
+  <div class="slide-title">课程大纲</div>
+  <div class="slide-content">
+    <ol class="num-list">
+      <li>安装</li>
+      <li>认识界面</li>
+      <li>专家和技能</li>
+      <li>修改设置</li>
+      <li>办公任务实战</li>
+      <li>开发任务实战</li>
+      <li>远程控制</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ====== Slide 4: Install 1 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">一 · 安装</div>
+  <div class="slide-title">第一步 · 安装</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>官网：<span class="hl">workbuddy.cn</span></li>
+      <li>Mac、Windows 都支持</li>
+      <li>选对应版本下载安装</li>
+      <li>打开后登录</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 5: Install 2 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">一 · 安装</div>
+  <div class="slide-title">微信扫码 · 一键登录</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>选择<span class="hl">微信登录</span></li>
+      <li>扫码即用，非常丝滑</li>
+      <li>不用折腾注册流程</li>
+      <li>「终于有个 Agent 产品不用折腾了」</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 6: Pricing ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">一 · 安装</div>
+  <div class="slide-title">版本与定价</div>
+  <div class="slide-content">
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">🆓</div>
+        <div class="card-title">个人体验版</div>
+        <div class="card-body">免费<br>基础功能</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⭐</div>
+        <div class="card-title">个人专业版</div>
+        <div class="card-body">58 元/月<br>重度用户首选</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏢</div>
+        <div class="card-title">企业版</div>
+        <div class="card-body">腾讯官方发布<br>按企业需求自选</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 7: Interface 1 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">二 · 认识界面</div>
+  <div class="slide-title">主界面布局</div>
+  <div class="slide-content">
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">💬</div>
+        <div class="card-title">中央 · 对话区</div>
+        <div class="card-body">与 WorkBuddy 交互的核心区域</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">下方 · 快捷模板</div>
+        <div class="card-body">预设提示词，改改就能用</div>
+      </div>
+    </div>
+    <div style="height:16px"></div>
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">📂</div>
+        <div class="card-title">左侧 · 功能导航</div>
+        <div class="card-body">专家、技能、项目、知识库</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">👁</div>
+        <div class="card-title">右侧 · 文件预览</div>
+        <div class="card-body">实时查看任务产出</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 8: Three Modes ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">二 · 认识界面</div>
+  <div class="slide-title">三种场景模式</div>
+  <div class="slide-content">
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">💻</div>
+        <div class="card-title">代码开发</div>
+        <div class="card-body">日常开发 · 网站开发<br>Agent应用 · Skill开发</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📄</div>
+        <div class="card-title">日常办公</div>
+        <div class="card-body">文档处理 · 数据分析<br>深度研究 · 幻灯片</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <div class="card-title">设计创意</div>
+        <div class="card-body">网站设计 · 移动App<br>PPT设计 · 品牌设计</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 9: Work Modes ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">二 · 认识界面</div>
+  <div class="slide-title">三种工作模式</div>
+  <div class="slide-content">
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">💬</div>
+        <div class="card-title">Ask · 纯聊天</div>
+        <div class="card-body">问它答，类似豆包<br><span class="hl">适合简单问答</span></div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📋</div>
+        <div class="card-title">Plan · 先计划</div>
+        <div class="card-body">先出计划再动手<br><span class="hl">新手友好</span></div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <div class="card-title">Craft · Agent</div>
+        <div class="card-body">默认模式，直接开干<br><span class="hl">日常干活用这个</span></div>
+      </div>
+    </div>
+    <div class="alert">⚠️ 默认是 Craft 模式（会消耗积分），只是聊天记得先切到 Ask！</div>
+  </div>
+</section>
+
+<!-- ====== Slide 10: Model Selection ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">二 · 认识界面</div>
+  <div class="slide-title">模型选择</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>内置国产大模型：<span class="hl">混元、DeepSeek、GLM、Kimi</span></li>
+      <li>推荐无脑选择：<span class="hl">DeepSeek V4 Pro</span></li>
+      <li>价格低，综合能力强 · 世界知识、Coding、Agent 全覆盖</li>
+      <li>也支持<span class="hl">外部 API Key</span> 接入（兼容 OpenAI 协议）</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 11: Permissions ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">二 · 认识界面</div>
+  <div class="slide-title">权限与外部模型</div>
+  <div class="slide-content">
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <div class="card-title">默认权限</div>
+        <div class="card-body">高风险操作会先问你<br>稳妥安全</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔓</div>
+        <div class="card-title">完全访问权限</div>
+        <div class="card-body">全交给 AI，不打扰<br>老手推荐</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <div class="card-title">外部 API</div>
+        <div class="card-body">设置 → 模型 → 添加<br>兼容 OpenAI 协议</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 12: Workspace ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">二 · 认识界面</div>
+  <div class="slide-title">工作空间</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>工作空间 = <span class="hl">项目文件夹</span></li>
+      <li>选择目录，WorkBuddy 基于该目录工作</li>
+      <li>支持<span class="hl">多 Agent 同时协作</span></li>
+      <li>保存后电脑里会出现对应的文件夹</li>
+    </ul>
+    <div class="alert">⚠️ 前期分类很重要，不然后期任务堆多了找起来头疼</div>
+  </div>
+</section>
+
+<!-- ====== Slide 13: Experts 1 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">三 · 专家和技能</div>
+  <div class="slide-title">专家 · 封装好的垂直 Agent</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>专家 = 一个<span class="hl">专业领域</span>的完整 Agent</li>
+      <li>内置 <span class="hl">100+</span> 专业领域 AI 专家</li>
+      <li>按行业分类，每个专家有能力卡片</li>
+      <li>举例：微信小程序专家、高考志愿专家、资讯速递专家</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 14: Experts 2 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">三 · 专家和技能</div>
+  <div class="slide-title">专家中心</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>按行业浏览专家列表</li>
+      <li>点击进入<span class="hl">专业对话</span></li>
+      <li>拥有行业知识 + 技能 + 最佳实践</li>
+      <li>也可以<span class="hl">自定义创建</span>专家，封装你的方法论</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 15: Expert Team ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">三 · 专家和技能</div>
+  <div class="slide-title">专家团 · 多 Agent 协作</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>专家团：<span class="hl">一群 Agent 一起协作</span></li>
+      <li>团长自动拆任务 → 分配专家 → 并行跑 → 整合结果</li>
+      <li>举例：软件开发团队 — 交付总监 + 产品经理 + 架构师 + 工程师 + QA</li>
+      <li>积分消耗约 <span class="hl">3-5 倍</span>单专家（多 Agent 通信成本）</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 16: Skills 1 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">三 · 专家和技能</div>
+  <div class="slide-title">技能 Skills · 完整市场生态</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>Skills = <span class="hl">可复用的能力模块</span></li>
+      <li>官方精选 Skills — 直接可用</li>
+      <li>Skillub 社区市场 — 用户贡献，应有尽有</li>
+      <li>搜索 → 安装 → 直接用</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 17: Skills 2 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">三 · 专家和技能</div>
+  <div class="slide-title">套件 + 自定义技能</div>
+  <div class="slide-content">
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <div class="card-title">套件</div>
+        <div class="card-body">一组相关技能打包<br>类似插件的概念</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🛠</div>
+        <div class="card-title">自定义创建</div>
+        <div class="card-body">右上角 → 添加技能<br>大白话描述即可</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <div class="card-title">分享复用</div>
+        <div class="card-body">封装方法论<br>反复调用 + 分享</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 18: Connectors ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">三 · 专家和技能</div>
+  <div class="slide-title">连接器 MCP · 打通外部服务</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>连接器 = <span class="hl">MCP</span>，打通外部服务</li>
+      <li>最大优势：<span class="hl">腾讯生态无缝打通</span></li>
+      <li>QQ邮箱 — 发送/搜索/整理邮件</li>
+      <li>腾讯会议、腾讯文档、通达信行情</li>
+      <li>扫码授权即用，支持自定义连接器</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 19: Settings 1 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">四 · 修改设置</div>
+  <div class="slide-title">推荐设置 · 系统设置</div>
+  <div class="slide-content">
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <div class="card-title">✅ 技能自动更新</div>
+        <div class="card-body">Skills 广场生态完整<br>新版本自动升级，不用手动</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">💻</div>
+        <div class="card-title">✅ 锁屏远程</div>
+        <div class="card-body">电脑不进入休眠<br>防止出门后任务中断</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 20: Settings 2 ====== -->
+<section class="slide" data-duration="5000">
+  <div class="section-tag">四 · 修改设置</div>
+  <div class="slide-title">推荐设置 · 对话记忆</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>打开「<span class="hl">对话记忆</span>」</li>
+      <li>从对话中提取关键信息</li>
+      <li>越用越了解你的习惯和偏好</li>
+      <li>支持从其他 Agent <span class="hl">导入记忆</span>，搬家很方便</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 21: Settings 3 ====== -->
+<section class="slide" data-duration="7000">
+  <div class="section-tag">四 · 修改设置</div>
+  <div class="slide-title">推荐设置 · 自定义指令</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>自定义指令 = Agent 的<span class="hl">最高级规则文档</span></li>
+      <li>推荐使用<span class="hl">卡帕西（Karpathy）模板</span></li>
+      <li>核心原则 ①：<span class="hl">先思考再写代码</span> — 不假设，不隐藏困惑</li>
+      <li>核心原则 ②：<span class="hl">简洁优先</span> — 用最少代码解决问题</li>
+      <li>核心原则 ③：<span class="hl">精准修改</span> — 只动必须动的地方</li>
+      <li>核心原则 ④：<span class="hl">目标驱动</span> — 定义成功标准，循环验证</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 22: Office Task ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">五 · 办公任务实战</div>
+  <div class="slide-title">实战① · 办公任务</div>
+  <div class="slide-subtitle">场景：基于公众号数据生成周会报告</div>
+  <div class="slide-content">
+    <div class="step-flow">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">切到「日常办公」模式</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">选择工作空间文件夹或上传文件</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">输入需求 → 优化提示词</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">自动执行，Todo 清单实时展示进度</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text">右侧栏预览产出文件 ✅</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 23: Dev Task 1 ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">六 · 开发任务实战</div>
+  <div class="slide-title">实战② · 开发任务</div>
+  <div class="slide-subtitle">场景：做一个 WorkBuddy 功能介绍网页</div>
+  <div class="slide-content">
+    <div class="step-flow">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">切到「代码开发」模式</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">点击「网站开发」模板</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">使用 Plan 模式 → 优化提示词</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">回答几个问题 → 自动生成</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text">右侧栏直接预览 ✅</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 24: Dev Task 2 ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">六 · 开发任务实战</div>
+  <div class="slide-title">优化 + 部署</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>首版效果可能有<span class="hl">AI 味</span>（配色等）</li>
+      <li>使用前端开发 Skill <span class="hl">重新优化</span></li>
+      <li>用服务器管理 Skill <span class="hl">部署上线</span></li>
+      <li>整个过程可以不管，让它自己跑</li>
+    </ul>
+    <div class="alert">⚠️ 实话：国产模型代码能力与顶尖还有差距，复杂大工程仍推荐 Claude Code / Codex</div>
+  </div>
+</section>
+
+<!-- ====== Slide 25: Remote 1 ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">七 · 远程控制</div>
+  <div class="slide-title">远程控制 · 微信小程序</div>
+  <div class="slide-content">
+    <div class="step-flow">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">打开助理 → 设置</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">开启远程控制选项</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">手机微信扫码 → 小程序授权</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">连接成功 ✅</div></div>
+    </div>
+    <div style="margin-top:20px">
+      <div class="card-row">
+        <div class="card">
+          <div class="card-title">☁️ 云端工作</div>
+          <div class="card-body">任务在云端跑<br>不需开电脑</div>
+        </div>
+        <div class="card">
+          <div class="card-title">🖥 连接电脑</div>
+          <div class="card-body">远程操控本地<br>读取电脑文件</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Slide 26: Remote 2 ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">七 · 远程控制</div>
+  <div class="slide-title">远程控制 · 实际场景</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>在外面，需要把<span class="hl">电脑文件发到邮箱</span></li>
+      <li>手机上跟 WorkBuddy 说一声 → 自动读取 + 发送</li>
+      <li>也可以发到小程序对话框</li>
+      <li>前提：提前配置好 QQ 邮箱连接器</li>
+      <li>支持<span class="hl">飞书、钉钉、QQ</span> 接入助理</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 27: Summary ====== -->
+<section class="slide" data-duration="6000">
+  <div class="section-tag">总结</div>
+  <div class="slide-title">核心价值</div>
+  <div class="slide-content">
+    <ul class="item-list">
+      <li>Agent 的核心价值 = <span class="hl">自动化日常重复任务</span></li>
+      <li>WorkBuddy 能覆盖 <span class="hl">70-80%</span> 办公需求</li>
+      <li>对国内用户<span class="hl">最友好</span>的 Agent 产品</li>
+      <li>适合：不想折腾、日常办公需求为主的用户</li>
+      <li>不适合：需要硬核开发能力的场景 → Claude Code / Codex</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== Slide 28: Thanks ====== -->
+<section class="slide" data-duration="5000">
+  <div class="glow-orb" style="top:-100px;right:-80px;"></div>
+  <div class="glow-orb" style="bottom:-80px;left:-60px;"></div>
+  <div class="thanks-title">谢谢观看 👋</div>
+  <div class="slide-subtitle" style="margin-top:20px;">
+    如果觉得有用，随手点赞转发
+  </div>
+  <div style="margin-top:20px;color:var(--text-dim);font-size:1.1em;">
+    作者：数字生命卡兹克
+  </div>
+</section>
+
+<!-- Progress bar -->
+<div class="progress-bar" id="progressBar" style="width:0%"></div>
+<!-- Slide counter -->
+<div class="slide-counter" id="slideCounter">1 / 28</div>
+<!-- Autoplay indicator -->
+<div class="autoplay-indicator"><div class="autoplay-dot"></div>AUTO</div>
+
+</div><!-- /.deck -->
+
+<script>
+(function() {
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+  var autoTimer = null;
+  var progressBar = document.getElementById('progressBar');
+  var counter = document.getElementById('slideCounter');
+
+  function goTo(idx) {
+    if (idx < 0 || idx >= total || idx === current) return;
+    slides[current].classList.remove('is-active');
+    slides[current].classList.add('is-exiting');
+    setTimeout(function() { slides[current - 1 >= 0 ? current - 1 : 0].classList.remove('is-exiting'); }, 600);
+    var prev = current;
+    current = idx;
+    slides[current].classList.add('is-active');
+    slides[prev].classList.remove('is-exiting');
+    counter.textContent = (current + 1) + ' / ' + total;
+    progressBar.style.width = ((current + 1) / total * 100) + '%';
+    resetAutoPlay();
+  }
+
+  function next() { goTo(current < total - 1 ? current + 1 : 0); }
+  function prev() { goTo(current - 1); }
+
+  function resetAutoPlay() {
+    clearInterval(autoTimer);
+    var dur = parseInt(slides[current].dataset.duration) || 6000;
+    autoTimer = setInterval(next, dur);
+  }
+
+  // Keyboard
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    else if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+    else if (e.key === 'p' || e.key === 'P') {
+      // Toggle pause
+      if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+      else resetAutoPlay();
+    }
+  });
+
+  // Touch support
+  var touchStart = 0;
+  document.addEventListener('touchstart', function(e) { touchStart = e.touches[0].clientX; });
+  document.addEventListener('touchend', function(e) {
+    var diff = e.changedTouches[0].clientX - touchStart;
+    if (Math.abs(diff) > 50) { diff < 0 ? next() : prev(); }
+  });
+
+  // URL hash deep-link
+  if (location.hash) {
+    var h = parseInt(location.hash.slice(1));
+    if (h > 0 && h <= total) { slides[current].classList.remove('is-active'); current = h - 1; slides[current].classList.add('is-active'); }
+  }
+  counter.textContent = '1 / ' + total;
+  progressBar.style.width = (1 / total * 100) + '%';
+
+  // Start autoplay
+  resetAutoPlay();
+})();
+</script>
+</body>
+</html>
